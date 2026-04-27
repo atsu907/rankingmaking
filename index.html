@@ -276,7 +276,6 @@
     </div>
 
     <script>
-        // 今日の日付をセット
         function setToday() {
             const now = new Date();
             const yyyy = now.getFullYear();
@@ -295,7 +294,7 @@
 
             document.getElementById('fileName').textContent = file.name;
 
-            const dateMatch = file.name.match(/(\d{4})[-_]?(\d{2})[-_]?(\d{2})/);
+            const dateMatch = file.name.match(/(\d{4})[-_.]?(\d{2})[-_.]?(\d{2})/);
             if (dateMatch) {
                 const extractedDate = dateMatch[1] + '-' + dateMatch[2] + '-' + dateMatch[3];
                 document.getElementById('startDate').value = extractedDate;
@@ -317,6 +316,37 @@
         }
 
         document.getElementById('chatInput').addEventListener('input', updateCharCount);
+
+        // 日付文字列をパースして {year, month, day} を返す
+        function parseDateStr(str) {
+            // 2026.04.19 や 2026/04/19 や 2026-04-19 に対応
+            // 後ろに曜日があってもOK
+            const patterns = [
+                /(\d{4})[.\/\-](\d{1,2})[.\/\-](\d{1,2})/,  // 2026.04.19
+                /(\d{1,2})[.\/\-](\d{1,2})/,                  // 04.19（年なし）
+            ];
+
+            for (const p of patterns) {
+                const m = str.match(p);
+                if (m) {
+                    if (m.length === 4) {
+                        return {
+                            year: parseInt(m[1]),
+                            month: parseInt(m[2]),
+                            day: parseInt(m[3])
+                        };
+                    } else if (m.length === 3) {
+                        const now = new Date();
+                        return {
+                            year: now.getFullYear(),
+                            month: parseInt(m[1]),
+                            day: parseInt(m[2])
+                        };
+                    }
+                }
+            }
+            return null;
+        }
 
         function parseTimeToMinutes(str) {
             str = str.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
@@ -403,36 +433,40 @@
             const messages = [];
             let currentDate = null;
 
-            const dateLinePattern = /^(\d{4}[\/\-]\d{1,2}[\/\-]\d{1,2}|\d{1,2}[\/\-]\d{1,2})/;
+            // 日付行パターン: 2026.04.19 日曜日 など
+            const dateLinePattern = /^(\d{4}[.\/\-]\d{1,2}[.\/\-]\d{1,2}|\d{1,2}[.\/\-]\d{1,2})/;
+            // 時刻行パターン: 07:29 名前 本文
             const timeLinePattern = /^(\d{1,2}:\d{2})\s+(.+?)\s+(.*)$/;
 
             for (let i = 0; i < lines.length; i++) {
                 const line = lines[i].trim();
                 if (!line) continue;
 
+                // まず日付行かチェック（時刻行より先にチェック）
                 const dateMatch = line.match(dateLinePattern);
-                if (dateMatch && !line.match(timeLinePattern)) {
-                    let dateStr = dateMatch[1];
-                    if (dateStr.match(/^\d{2}[\/\-]/)) {
-                        dateStr = '20' + dateStr;
+                const timeMatch = line.match(timeLinePattern);
+
+                if (dateMatch && !timeMatch) {
+                    // 日付行として処理
+                    const parsed = parseDateStr(line);
+                    if (parsed) {
+                        currentDate = parsed.year + '/' +
+                            String(parsed.month).padStart(2, '0') + '/' +
+                            String(parsed.day).padStart(2, '0');
                     }
-                    if (dateStr.match(/^\d{1,2}[\/\-]\d{1,2}$/)) {
-                        const now = new Date();
-                        dateStr = now.getFullYear() + '/' + dateStr;
-                    }
-                    currentDate = dateStr.replace(/-/g, '/');
                     continue;
                 }
 
-                const match = line.match(timeLinePattern);
-                if (match) {
+                // 時刻行として処理
+                if (timeMatch) {
                     messages.push({
-                        time: match[1],
-                        name: match[2].trim(),
-                        text: match[3].trim(),
+                        time: timeMatch[1],
+                        name: timeMatch[2].trim(),
+                        text: timeMatch[3].trim(),
                         date: currentDate
                     });
                 } else {
+                    // 前のメッセージの続き
                     if (messages.length > 0) {
                         messages[messages.length - 1].text += ' ' + line;
                     }
@@ -449,17 +483,8 @@
 
         function filterByRange(messages, startDateTime, endDateTime) {
             return messages.filter(msg => {
-                let dateToCheck = msg.date;
-
-                if (!dateToCheck) {
-                    const textDateMatch = msg.text.match(/(\d{4}[\/\-]\d{1,2}[\/\-]\d{1,2})/);
-                    if (textDateMatch) {
-                        dateToCheck = textDateMatch[1].replace(/-/g, '/');
-                    }
-                }
-
-                if (dateToCheck) {
-                    const parts = dateToCheck.split('/');
+                if (msg.date) {
+                    const parts = msg.date.split('/');
                     const [h, m] = msg.time.split(':').map(Number);
                     const msgDateTime = new Date(
                         parseInt(parts[0]),
@@ -470,8 +495,19 @@
                     return msgDateTime >= startDateTime && msgDateTime <= endDateTime;
                 }
 
-                // 日付情報がない場合は開始日〜終了日の全データを含める
-                return true;
+                // 日付不明のメッセージは、時刻のみで判断
+                // ただし日付範囲が1日のみの場合のみ有効
+                const startDay = startDateTime.toDateString();
+                const endDay = endDateTime.toDateString();
+                if (startDay === endDay) {
+                    const [h, m] = msg.time.split(':').map(Number);
+                    const msgMinutes = h * 60 + m;
+                    const startMinutes = startDateTime.getHours() * 60 + startDateTime.getMinutes();
+                    const endMinutes = endDateTime.getHours() * 60 + endDateTime.getMinutes();
+                    return msgMinutes >= startMinutes && msgMinutes <= endMinutes;
+                }
+
+                return false;
             });
         }
 
