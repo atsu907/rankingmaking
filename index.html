@@ -93,6 +93,35 @@
             text-overflow: ellipsis;
             white-space: nowrap;
         }
+        .marker-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+        .marker-row input[type="text"] {
+            padding: 8px 10px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 0.85em;
+            width: 120px;
+            -webkit-appearance: none;
+            background: #fff;
+        }
+        .marker-row input[type="text"]:focus {
+            outline: none;
+            border-color: #5a67d8;
+        }
+        .marker-row span {
+            font-size: 0.75em;
+            color: #718096;
+        }
+        .marker-saved {
+            font-size: 0.7em;
+            color: #48bb78;
+            display: none;
+        }
         .date-select {
             display: flex;
             align-items: center;
@@ -241,6 +270,13 @@
                 <input type="file" id="fileInput" accept=".txt" style="display:none" onchange="loadFile()">
                 <span class="file-name" id="fileName">未選択</span>
             </div>
+
+            <div class="marker-row">
+                <span>時間の目印:</span>
+                <input type="text" id="markerInput" placeholder="例: $ # ! S" maxlength="10">
+                <span class="marker-saved" id="markerSaved">保存済</span>
+            </div>
+
             <textarea id="chatInput" placeholder="ここにチャット履歴を貼り付けるか、ファイルを開いてください"></textarea>
             <p class="count-info" id="charCount">0文字</p>
 
@@ -276,6 +312,41 @@
     </div>
 
     <script>
+        const STORAGE_KEY = 'study_marker';
+
+        // 保存された目印を読み込む
+        function loadMarker() {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                document.getElementById('markerInput').value = saved;
+            }
+        }
+
+        // 目印を保存する
+        function saveMarker() {
+            const marker = document.getElementById('markerInput').value.trim();
+            if (marker) {
+                localStorage.setItem(STORAGE_KEY, marker);
+                const el = document.getElementById('markerSaved');
+                el.style.display = 'inline';
+                setTimeout(() => { el.style.display = 'none'; }, 2000);
+            } else {
+                localStorage.removeItem(STORAGE_KEY);
+                const el = document.getElementById('markerSaved');
+                el.style.display = 'inline';
+                el.textContent = '解除済';
+                el.style.color = '#a0aec0';
+                setTimeout(() => {
+                    el.style.display = 'none';
+                    el.textContent = '保存済';
+                    el.style.color = '#48bb78';
+                }, 2000);
+            }
+        }
+
+        document.getElementById('markerInput').addEventListener('input', saveMarker);
+        loadMarker();
+
         function setToday() {
             const now = new Date();
             const yyyy = now.getFullYear();
@@ -317,13 +388,10 @@
 
         document.getElementById('chatInput').addEventListener('input', updateCharCount);
 
-        // 日付文字列をパースして {year, month, day} を返す
         function parseDateStr(str) {
-            // 2026.04.19 や 2026/04/19 や 2026-04-19 に対応
-            // 後ろに曜日があってもOK
             const patterns = [
-                /(\d{4})[.\/\-](\d{1,2})[.\/\-](\d{1,2})/,  // 2026.04.19
-                /(\d{1,2})[.\/\-](\d{1,2})/,                  // 04.19（年なし）
+                /(\d{4})[.\/\-](\d{1,2})[.\/\-](\d{1,2})/,
+                /(\d{1,2})[.\/\-](\d{1,2})/,
             ];
 
             for (const p of patterns) {
@@ -423,9 +491,34 @@
             return null;
         }
 
-        function extractStudyTime(text) {
+        // 目印の後ろにある時間だけを抽出
+        function extractStudyTimeWithMarker(text, marker) {
             let normalized = text.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
-            return parseTimeToMinutes(normalized);
+
+            if (!marker) {
+                // 目印なし → 従来通り全体から探す
+                return parseTimeToMinutes(normalized);
+            }
+
+            // 目印をエスケープ（正規表現の特殊文字対策）
+            const escaped = marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const regex = new RegExp(escaped + '\\s*(.+?)(?:[。、\\n]|$)', 'g');
+
+            // 目印の後ろの部分だけを探す
+            let totalMinutes = 0;
+            let found = false;
+            let match;
+            while ((match = regex.exec(normalized)) !== null) {
+                const afterMarker = match[1].trim();
+                const minutes = parseTimeToMinutes(afterMarker);
+                if (minutes !== null) {
+                    totalMinutes += minutes;
+                    found = true;
+                }
+            }
+
+            if (found) return totalMinutes;
+            return null;
         }
 
         function parseChat(input) {
@@ -433,21 +526,17 @@
             const messages = [];
             let currentDate = null;
 
-            // 日付行パターン: 2026.04.19 日曜日 など
             const dateLinePattern = /^(\d{4}[.\/\-]\d{1,2}[.\/\-]\d{1,2}|\d{1,2}[.\/\-]\d{1,2})/;
-            // 時刻行パターン: 07:29 名前 本文
             const timeLinePattern = /^(\d{1,2}:\d{2})\s+(.+?)\s+(.*)$/;
 
             for (let i = 0; i < lines.length; i++) {
                 const line = lines[i].trim();
                 if (!line) continue;
 
-                // まず日付行かチェック（時刻行より先にチェック）
                 const dateMatch = line.match(dateLinePattern);
                 const timeMatch = line.match(timeLinePattern);
 
                 if (dateMatch && !timeMatch) {
-                    // 日付行として処理
                     const parsed = parseDateStr(line);
                     if (parsed) {
                         currentDate = parsed.year + '/' +
@@ -457,7 +546,6 @@
                     continue;
                 }
 
-                // 時刻行として処理
                 if (timeMatch) {
                     messages.push({
                         time: timeMatch[1],
@@ -466,7 +554,6 @@
                         date: currentDate
                     });
                 } else {
-                    // 前のメッセージの続き
                     if (messages.length > 0) {
                         messages[messages.length - 1].text += ' ' + line;
                     }
@@ -495,8 +582,6 @@
                     return msgDateTime >= startDateTime && msgDateTime <= endDateTime;
                 }
 
-                // 日付不明のメッセージは、時刻のみで判断
-                // ただし日付範囲が1日のみの場合のみ有効
                 const startDay = startDateTime.toDateString();
                 const endDay = endDateTime.toDateString();
                 if (startDay === endDay) {
@@ -570,7 +655,13 @@
                 return mm + '/' + dd + ' ' + hh + ':' + min;
             };
 
-            filterInfo.textContent = formatDate(startDateTime) + ' 〜 ' + formatDate(endDateTime) + ' (' + afterCount + '件)';
+            const marker = document.getElementById('markerInput').value.trim();
+
+            let infoText = formatDate(startDateTime) + ' 〜 ' + formatDate(endDateTime) + ' (' + afterCount + '件)';
+            if (marker) {
+                infoText += ' 目印: ' + marker;
+            }
+            filterInfo.textContent = infoText;
 
             const userMessages = {};
             for (const msg of messages) {
@@ -587,7 +678,7 @@
             const userStudyTimes = [];
             for (const [name, texts] of Object.entries(userMessages)) {
                 const combinedText = texts.join(' ');
-                const minutes = extractStudyTime(combinedText);
+                const minutes = extractStudyTimeWithMarker(combinedText, marker);
                 userStudyTimes.push({ name, minutes });
             }
 
