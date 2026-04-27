@@ -142,21 +142,6 @@
             font-size: 0.75em;
             margin-top: 4px;
         }
-        .example {
-            color: #a0aec0;
-            font-size: 0.75em;
-            margin-top: 4px;
-            cursor: pointer;
-            text-decoration: underline;
-        }
-        .example:hover {
-            color: #5a67d8;
-        }
-        hr {
-            border: none;
-            border-top: 1px solid #e2e8f0;
-            margin: 12px 0;
-        }
     </style>
 </head>
 <body>
@@ -166,16 +151,13 @@
 
         <div class="section">
             <label for="chatInput">📋 チャット履歴を貼り付け</label>
-            <textarea id="chatInput" placeholder="例：
-07:29 高3 おつかれです
+            <textarea id="chatInput" placeholder="07:29 高3 おつかれです
 08:51 国文 ありがとう
-11:03 高3 健康にくらす💯
 21:49 全力少年 学校あり 6時間でした
 22:25 通信新高1 オンライン登校ありで現在11時間30分です
 23:03 くすりや 今日2時間45分、学校ありです
 23:44 ｻｶﾞﾉﾃﾞｽ 三時間八分でした"></textarea>
             <p class="count-info" id="charCount">0文字</p>
-            <p class="example" onclick="loadExample()">▶ サンプルデータを読み込む</p>
             
             <div class="options">
                 <label><input type="checkbox" id="optAt" checked> 名前に＠をつける</label>
@@ -196,39 +178,9 @@
             </div>
             <p class="error" id="errorMsg"></p>
         </div>
-
-        <div class="section" style="background:#f7fafc;">
-            <p style="font-size:0.8em; color:#718096;">
-                💡 <strong>使い方：</strong>LINEのトーク画面からチャットをコピーして貼り付け、「ランキングを作成」を押すだけ。
-                時刻・名前・本文を自動解析し、勉強時間の報告を抽出してランキング化します。
-            </p>
-        </div>
     </div>
 
     <script>
-        function loadExample() {
-            const example = `07:29 高3 おつかれです
-07:29 高3 じゃあ次自分行こっかな
-07:50 香芝 おっと是非
-08:51 国文 ありがとう
-08:52 国文 最近寝るの早いから夜のうちにできない
-11:03 高3 健康にくらす💯
-21:49 全力少年 学校あり
-6時間でした。もう疲れたんで寝ますお休み
-21:50 全力少年 正確にいえば6時間10分くらいですが6時間でいいです。
-22:25 通信新高1 お久しぶりです。
-オンライン登校ありで現在11時間30分です。あと30分頑張ります(頑張る)
-22:42 高3 今日1時とかにまとめる予定
-23:03 くすりや 今日2時間45分、学校ありです
-23:21 香芝 画像
-23:21 香芝 🏫アリ
-明日も頑張ります🔥
-23:44 ｻｶﾞﾉﾃﾞｽ 三時間八分でした
-23:44 ｻｶﾞﾉﾃﾞｽ 画像`;
-            document.getElementById('chatInput').value = example;
-            updateCharCount();
-        }
-
         function updateCharCount() {
             const count = document.getElementById('chatInput').value.length;
             document.getElementById('charCount').textContent = count + '文字';
@@ -237,11 +189,9 @@
         document.getElementById('chatInput').addEventListener('input', updateCharCount);
 
         function parseTimeToMinutes(str) {
-            // 全角数字を半角に
             str = str.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
-            // 漢数字（〜十〜）の簡易対応
             const kanjiNum = { '一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9,'十':10,'百':100 };
-            // "三時間八分" のようなパターン
+            
             let match = str.match(/([一二三四五六七八九十百]+)時間([一二三四五六七八九十]+)分/);
             if (match) {
                 let h = 0;
@@ -276,24 +226,18 @@
                 return m;
             }
 
-            // 半角数字パターン
-            // X時間Y分 / XhYmin / X時間 / Y分 / Xh / Ymin
             let totalMinutes = 0;
             const hourPatterns = [
                 /(\d+)\s*時間/,
                 /(\d+)\s*h/i,
-                /(\d+)\s*時間半/, // 半端対応
             ];
             const minPatterns = [
                 /(\d+)\s*分/,
                 /(\d+)\s*min/i,
-                /(\d+)\s*m(?!\w)/i,
             ];
             const combPatterns = [
                 /(\d+)\s*時間\s*(\d+)\s*分/,
                 /(\d+)\s*h\s*(\d+)\s*min/i,
-                /(\d+)\s*h\s*(\d+)\s*m(?!\w)/i,
-                /(\d+)\s*時間\s*半/, // 例：2時間半 → 150分
             ];
 
             for (const p of combPatterns) {
@@ -302,7 +246,6 @@
                     return parseInt(m[1]) * 60 + parseInt(m[2]);
                 }
             }
-            // 時間半
             const halfMatch = str.match(/(\d+)\s*時間半/);
             if (halfMatch) {
                 return parseInt(halfMatch[1]) * 60 + 30;
@@ -326,8 +269,6 @@
             }
             if (hasHour || totalMinutes > 0) return totalMinutes;
 
-            // 単独の数字（例：「6時間」が改行で分かれてるケース用。本文全体の結合は別途対応）
-            // 小数点時間（例：1.5h）
             const decimalHour = str.match(/(\d+\.?\d*)\s*h/i);
             if (decimalHour) {
                 return Math.round(parseFloat(decimalHour[1]) * 60);
@@ -337,7 +278,6 @@
         }
 
         function extractStudyTime(text) {
-            // 全角数字を半角に
             let normalized = text.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
             return parseTimeToMinutes(normalized);
         }
@@ -346,7 +286,6 @@
             const lines = input.split('\n');
             const messages = [];
             
-            // LINEの形式をパース：時刻 名前 本文
             const linePattern = /^(\d{1,2}:\d{2})\s+(.+?)\s+(.*)$/;
             
             for (let i = 0; i < lines.length; i++) {
@@ -361,7 +300,6 @@
                         text: match[3].trim()
                     });
                 } else {
-                    // 前のメッセージの続きの可能性（改行された本文）
                     if (messages.length > 0) {
                         messages[messages.length - 1].text += ' ' + line;
                     }
@@ -388,7 +326,6 @@
                 return;
             }
 
-            // ユーザーごとにメッセージをまとめる
             const userMessages = {};
             for (const msg of messages) {
                 if (!userMessages[msg.name]) {
@@ -401,23 +338,18 @@
             const optHmin = document.getElementById('optHmin').checked;
             const optShowNoReport = document.getElementById('optShowNoReport').checked;
 
-            // ユーザーごとに勉強時間を抽出
             const userStudyTimes = [];
             for (const [name, texts] of Object.entries(userMessages)) {
-                // 全メッセージを結合して解析（改行で分かれたケース対応）
                 const combinedText = texts.join(' ');
                 const minutes = extractStudyTime(combinedText);
                 userStudyTimes.push({ name, minutes, combinedText });
             }
 
-            // 時間があるユーザーとないユーザーに分ける
             const withTime = userStudyTimes.filter(u => u.minutes !== null);
             const withoutTime = userStudyTimes.filter(u => u.minutes === null);
 
-            // 時間降順ソート
             withTime.sort((a, b) => b.minutes - a.minutes);
 
-            // 結果生成
             const lines = [];
             lines.push('📊 勉強時間ランキング');
             
@@ -441,7 +373,6 @@
                 rank++;
             }
 
-            // 時間記載なし
             if (optShowNoReport && withoutTime.length > 0) {
                 const noReportNames = withoutTime.map(u => (optAt ? '@' : '') + u.name).join('・');
                 lines.push('※' + noReportNames + ' 報告なし');
@@ -471,7 +402,6 @@
             });
         }
 
-        // 文字数カウント初期化
         updateCharCount();
     </script>
 </body>
