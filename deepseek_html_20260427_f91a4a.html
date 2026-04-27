@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>勉強時間ランキング作成</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Helvetica Neue', 'Segoe UI', sans-serif;
+            background: #f0f4f8;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 700px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            color: #2d3748;
+            margin-bottom: 8px;
+            font-size: 1.5em;
+        }
+        .subtitle {
+            text-align: center;
+            color: #718096;
+            font-size: 0.85em;
+            margin-bottom: 20px;
+        }
+        .section {
+            background: #fff;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+        label {
+            display: block;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 6px;
+            font-size: 0.9em;
+        }
+        textarea {
+            width: 100%;
+            height: 280px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 0.9em;
+            font-family: 'SF Mono', 'Menlo', 'Monaco', monospace;
+            resize: vertical;
+            transition: border 0.2s;
+        }
+        textarea:focus {
+            outline: none;
+            border-color: #5a67d8;
+        }
+        .options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            margin-top: 12px;
+        }
+        .options label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 400;
+            cursor: pointer;
+            font-size: 0.85em;
+        }
+        .options input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: #5a67d8;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #5a67d8;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-top: 4px;
+        }
+        button:hover {
+            background: #4c51bf;
+        }
+        button:active {
+            transform: scale(0.98);
+        }
+        .result-area {
+            background: #1a202c;
+            color: #e2e8f0;
+            border-radius: 8px;
+            padding: 16px;
+            font-family: 'SF Mono', 'Menlo', 'Monaco', monospace;
+            font-size: 0.9em;
+            white-space: pre-wrap;
+            word-break: break-all;
+            min-height: 60px;
+            line-height: 1.6;
+            position: relative;
+        }
+        .copy-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: #4a5568;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            padding: 6px 12px;
+            font-size: 0.75em;
+            cursor: pointer;
+            width: auto;
+        }
+        .copy-btn:hover {
+            background: #5a67d8;
+        }
+        .result-wrapper {
+            position: relative;
+        }
+        .error {
+            color: #e53e3e;
+            font-size: 0.85em;
+            margin-top: 6px;
+        }
+        .count-info {
+            text-align: right;
+            color: #a0aec0;
+            font-size: 0.75em;
+            margin-top: 4px;
+        }
+        .example {
+            color: #a0aec0;
+            font-size: 0.75em;
+            margin-top: 4px;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+        .example:hover {
+            color: #5a67d8;
+        }
+        hr {
+            border: none;
+            border-top: 1px solid #e2e8f0;
+            margin: 12px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 勉強時間ランキング作成</h1>
+        <p class="subtitle">LINEのチャット履歴を貼り付けてランキングを自動生成</p>
+
+        <div class="section">
+            <label for="chatInput">📋 チャット履歴を貼り付け</label>
+            <textarea id="chatInput" placeholder="例：
+07:29 高3 おつかれです
+08:51 国文 ありがとう
+11:03 高3 健康にくらす💯
+21:49 全力少年 学校あり 6時間でした
+22:25 通信新高1 オンライン登校ありで現在11時間30分です
+23:03 くすりや 今日2時間45分、学校ありです
+23:44 ｻｶﾞﾉﾃﾞｽ 三時間八分でした"></textarea>
+            <p class="count-info" id="charCount">0文字</p>
+            <p class="example" onclick="loadExample()">▶ サンプルデータを読み込む</p>
+            
+            <div class="options">
+                <label><input type="checkbox" id="optAt" checked> 名前に＠をつける</label>
+                <label><input type="checkbox" id="optHmin" checked> h/min表記にする</label>
+                <label><input type="checkbox" id="optShowNoReport" checked> 報告なしも表示</label>
+            </div>
+            
+            <button onclick="generateRanking()">🔍 ランキングを作成</button>
+        </div>
+
+        <div class="section">
+            <label>📋 生成結果</label>
+            <div class="result-wrapper">
+                <div class="result-area" id="resultArea">
+                    ここにランキングが表示されます
+                </div>
+                <button class="copy-btn" onclick="copyResult()">📋 コピー</button>
+            </div>
+            <p class="error" id="errorMsg"></p>
+        </div>
+
+        <div class="section" style="background:#f7fafc;">
+            <p style="font-size:0.8em; color:#718096;">
+                💡 <strong>使い方：</strong>LINEのトーク画面からチャットをコピーして貼り付け、「ランキングを作成」を押すだけ。
+                時刻・名前・本文を自動解析し、勉強時間の報告を抽出してランキング化します。
+            </p>
+        </div>
+    </div>
+
+    <script>
+        function loadExample() {
+            const example = `07:29 高3 おつかれです
+07:29 高3 じゃあ次自分行こっかな
+07:50 香芝 おっと是非
+08:51 国文 ありがとう
+08:52 国文 最近寝るの早いから夜のうちにできない
+11:03 高3 健康にくらす💯
+21:49 全力少年 学校あり
+6時間でした。もう疲れたんで寝ますお休み
+21:50 全力少年 正確にいえば6時間10分くらいですが6時間でいいです。
+22:25 通信新高1 お久しぶりです。
+オンライン登校ありで現在11時間30分です。あと30分頑張ります(頑張る)
+22:42 高3 今日1時とかにまとめる予定
+23:03 くすりや 今日2時間45分、学校ありです
+23:21 香芝 画像
+23:21 香芝 🏫アリ
+明日も頑張ります🔥
+23:44 ｻｶﾞﾉﾃﾞｽ 三時間八分でした
+23:44 ｻｶﾞﾉﾃﾞｽ 画像`;
+            document.getElementById('chatInput').value = example;
+            updateCharCount();
+        }
+
+        function updateCharCount() {
+            const count = document.getElementById('chatInput').value.length;
+            document.getElementById('charCount').textContent = count + '文字';
+        }
+
+        document.getElementById('chatInput').addEventListener('input', updateCharCount);
+
+        function parseTimeToMinutes(str) {
+            // 全角数字を半角に
+            str = str.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
+            // 漢数字（〜十〜）の簡易対応
+            const kanjiNum = { '一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9,'十':10,'百':100 };
+            // "三時間八分" のようなパターン
+            let match = str.match(/([一二三四五六七八九十百]+)時間([一二三四五六七八九十]+)分/);
+            if (match) {
+                let h = 0;
+                let m = 0;
+                const hStr = match[1];
+                const mStr = match[2];
+                if (hStr === '十') h = 10;
+                else if (hStr.length === 2 && hStr[0] === '十') h = 10 + (kanjiNum[hStr[1]] || 0);
+                else h = kanjiNum[hStr] || 0;
+                
+                if (mStr === '十') m = 10;
+                else if (mStr.length === 2 && mStr[0] === '十') m = 10 + (kanjiNum[mStr[1]] || 0);
+                else m = kanjiNum[mStr] || 0;
+                return h * 60 + m;
+            }
+            match = str.match(/([一二三四五六七八九十百]+)時間/);
+            if (match) {
+                const hStr = match[1];
+                let h = 0;
+                if (hStr === '十') h = 10;
+                else if (hStr.length === 2 && hStr[0] === '十') h = 10 + (kanjiNum[hStr[1]] || 0);
+                else h = kanjiNum[hStr] || 0;
+                return h * 60;
+            }
+            match = str.match(/([一二三四五六七八九十]+)分/);
+            if (match) {
+                const mStr = match[1];
+                let m = 0;
+                if (mStr === '十') m = 10;
+                else if (mStr.length === 2 && mStr[0] === '十') m = 10 + (kanjiNum[mStr[1]] || 0);
+                else m = kanjiNum[mStr] || 0;
+                return m;
+            }
+
+            // 半角数字パターン
+            // X時間Y分 / XhYmin / X時間 / Y分 / Xh / Ymin
+            let totalMinutes = 0;
+            const hourPatterns = [
+                /(\d+)\s*時間/,
+                /(\d+)\s*h/i,
+                /(\d+)\s*時間半/, // 半端対応
+            ];
+            const minPatterns = [
+                /(\d+)\s*分/,
+                /(\d+)\s*min/i,
+                /(\d+)\s*m(?!\w)/i,
+            ];
+            const combPatterns = [
+                /(\d+)\s*時間\s*(\d+)\s*分/,
+                /(\d+)\s*h\s*(\d+)\s*min/i,
+                /(\d+)\s*h\s*(\d+)\s*m(?!\w)/i,
+                /(\d+)\s*時間\s*半/, // 例：2時間半 → 150分
+            ];
+
+            for (const p of combPatterns) {
+                const m = str.match(p);
+                if (m && m[1] && m[2]) {
+                    return parseInt(m[1]) * 60 + parseInt(m[2]);
+                }
+            }
+            // 時間半
+            const halfMatch = str.match(/(\d+)\s*時間半/);
+            if (halfMatch) {
+                return parseInt(halfMatch[1]) * 60 + 30;
+            }
+
+            let hasHour = false;
+            for (const p of hourPatterns) {
+                const m = str.match(p);
+                if (m) {
+                    totalMinutes += parseInt(m[1]) * 60;
+                    hasHour = true;
+                    break;
+                }
+            }
+            for (const p of minPatterns) {
+                const m = str.match(p);
+                if (m) {
+                    totalMinutes += parseInt(m[1]);
+                    break;
+                }
+            }
+            if (hasHour || totalMinutes > 0) return totalMinutes;
+
+            // 単独の数字（例：「6時間」が改行で分かれてるケース用。本文全体の結合は別途対応）
+            // 小数点時間（例：1.5h）
+            const decimalHour = str.match(/(\d+\.?\d*)\s*h/i);
+            if (decimalHour) {
+                return Math.round(parseFloat(decimalHour[1]) * 60);
+            }
+
+            return null;
+        }
+
+        function extractStudyTime(text) {
+            // 全角数字を半角に
+            let normalized = text.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
+            return parseTimeToMinutes(normalized);
+        }
+
+        function parseChat(input) {
+            const lines = input.split('\n');
+            const messages = [];
+            
+            // LINEの形式をパース：時刻 名前 本文
+            const linePattern = /^(\d{1,2}:\d{2})\s+(.+?)\s+(.*)$/;
+            
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line) continue;
+                
+                const match = line.match(linePattern);
+                if (match) {
+                    messages.push({
+                        time: match[1],
+                        name: match[2].trim(),
+                        text: match[3].trim()
+                    });
+                } else {
+                    // 前のメッセージの続きの可能性（改行された本文）
+                    if (messages.length > 0) {
+                        messages[messages.length - 1].text += ' ' + line;
+                    }
+                }
+            }
+            return messages;
+        }
+
+        function generateRanking() {
+            const input = document.getElementById('chatInput').value.trim();
+            const errorMsg = document.getElementById('errorMsg');
+            const resultArea = document.getElementById('resultArea');
+            errorMsg.textContent = '';
+
+            if (!input) {
+                errorMsg.textContent = 'チャット履歴を入力してください。';
+                resultArea.textContent = 'ここにランキングが表示されます';
+                return;
+            }
+
+            const messages = parseChat(input);
+            if (messages.length === 0) {
+                errorMsg.textContent = 'チャット履歴の形式が認識できませんでした。「時刻 名前 本文」の形式で入力してください。';
+                return;
+            }
+
+            // ユーザーごとにメッセージをまとめる
+            const userMessages = {};
+            for (const msg of messages) {
+                if (!userMessages[msg.name]) {
+                    userMessages[msg.name] = [];
+                }
+                userMessages[msg.name].push(msg.text);
+            }
+
+            const optAt = document.getElementById('optAt').checked;
+            const optHmin = document.getElementById('optHmin').checked;
+            const optShowNoReport = document.getElementById('optShowNoReport').checked;
+
+            // ユーザーごとに勉強時間を抽出
+            const userStudyTimes = [];
+            for (const [name, texts] of Object.entries(userMessages)) {
+                // 全メッセージを結合して解析（改行で分かれたケース対応）
+                const combinedText = texts.join(' ');
+                const minutes = extractStudyTime(combinedText);
+                userStudyTimes.push({ name, minutes, combinedText });
+            }
+
+            // 時間があるユーザーとないユーザーに分ける
+            const withTime = userStudyTimes.filter(u => u.minutes !== null);
+            const withoutTime = userStudyTimes.filter(u => u.minutes === null);
+
+            // 時間降順ソート
+            withTime.sort((a, b) => b.minutes - a.minutes);
+
+            // 結果生成
+            const lines = [];
+            lines.push('📊 勉強時間ランキング');
+            
+            let rank = 1;
+            for (const user of withTime) {
+                const prefix = optAt ? '@' : '';
+                const nameDisplay = prefix + user.name;
+                let timeDisplay;
+                if (optHmin) {
+                    const h = Math.floor(user.minutes / 60);
+                    const m = user.minutes % 60;
+                    timeDisplay = h + 'h' + m + 'min';
+                } else {
+                    const h = Math.floor(user.minutes / 60);
+                    const m = user.minutes % 60;
+                    if (h > 0 && m > 0) timeDisplay = h + '時間' + m + '分';
+                    else if (h > 0) timeDisplay = h + '時間';
+                    else timeDisplay = m + '分';
+                }
+                lines.push(rank + '位 ' + nameDisplay + ' ' + timeDisplay);
+                rank++;
+            }
+
+            // 時間記載なし
+            if (optShowNoReport && withoutTime.length > 0) {
+                const noReportNames = withoutTime.map(u => (optAt ? '@' : '') + u.name).join('・');
+                lines.push('※' + noReportNames + ' 報告なし');
+            }
+
+            resultArea.textContent = lines.join('\n');
+        }
+
+        function copyResult() {
+            const resultArea = document.getElementById('resultArea');
+            const text = resultArea.textContent;
+            if (text === 'ここにランキングが表示されます') {
+                document.getElementById('errorMsg').textContent = '先にランキングを作成してください。';
+                return;
+            }
+            navigator.clipboard.writeText(text).then(() => {
+                const btn = document.querySelector('.copy-btn');
+                const original = btn.textContent;
+                btn.textContent = '✅ コピー完了';
+                btn.style.background = '#48bb78';
+                setTimeout(() => {
+                    btn.textContent = original;
+                    btn.style.background = '#4a5568';
+                }, 1500);
+            }).catch(() => {
+                document.getElementById('errorMsg').textContent = 'コピーに失敗しました。手動でコピーしてください。';
+            });
+        }
+
+        // 文字数カウント初期化
+        updateCharCount();
+    </script>
+</body>
+</html>
