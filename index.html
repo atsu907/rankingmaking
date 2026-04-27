@@ -49,7 +49,7 @@
         }
         textarea {
             width: 100%;
-            height: 250px;
+            height: 220px;
             border: 2px solid #e2e8f0;
             border-radius: 8px;
             padding: 10px;
@@ -62,6 +62,43 @@
         textarea:focus {
             outline: none;
             border-color: #5a67d8;
+        }
+        .file-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .file-btn {
+            width: auto;
+            padding: 10px 16px;
+            background: #edf2f7;
+            color: #2d3748;
+            border: 2px dashed #cbd5e0;
+            border-radius: 8px;
+            font-size: 0.8em;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .file-btn:active {
+            background: #e2e8f0;
+        }
+        .file-name {
+            font-size: 0.75em;
+            color: #718096;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .filter-info {
+            font-size: 0.7em;
+            color: #5a67d8;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
         }
         .options {
             display: flex;
@@ -163,9 +200,15 @@
         <p class="subtitle">LINEのチャット履歴を貼り付けてランキングを自動生成</p>
 
         <div class="section">
-            <label for="chatInput">📋 チャット履歴を貼り付け</label>
-            <textarea id="chatInput" placeholder="例：23:44 ｻｶﾞﾉﾃﾞｽ 三時間八分でした"></textarea>
+            <label for="chatInput">📋 チャット履歴</label>
+            <div class="file-row">
+                <label class="file-btn" for="fileInput">📁 ファイルを開く</label>
+                <input type="file" id="fileInput" accept=".txt" style="display:none" onchange="loadFile()">
+                <span class="file-name" id="fileName">未選択</span>
+            </div>
+            <textarea id="chatInput" placeholder="ここにチャット履歴を貼り付けるか、ファイルを開いてください"></textarea>
             <p class="count-info" id="charCount">0文字</p>
+            <p class="filter-info">🔽 今日12:00以降のデータのみ抽出します</p>
 
             <div class="options">
                 <label><input type="checkbox" id="optAt" checked> ＠をつける</label>
@@ -189,12 +232,33 @@
     </div>
 
     <script>
+        function loadFile() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            if (!file) return;
+            
+            document.getElementById('fileName').textContent = file.name;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const text = e.target.result;
+                document.getElementById('chatInput').value = text;
+                updateCharCount();
+            };
+            reader.readAsText(file, 'UTF-8');
+        }
+
         function updateCharCount() {
             const count = document.getElementById('chatInput').value.length;
             document.getElementById('charCount').textContent = count + '文字';
         }
 
         document.getElementById('chatInput').addEventListener('input', updateCharCount);
+
+        function getToday12() {
+            const now = new Date();
+            return new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0);
+        }
 
         function parseTimeToMinutes(str) {
             str = str.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
@@ -302,6 +366,23 @@
             return messages;
         }
 
+        function filterToday12(messages) {
+            const today12 = getToday12();
+            const today12Hour = today12.getHours();
+            const today12Min = today12.getMinutes();
+            
+            return messages.filter(msg => {
+                const parts = msg.time.split(':');
+                const h = parseInt(parts[0]);
+                const m = parseInt(parts[1]);
+                
+                // 時刻が12:00以降かチェック（日付がないので時刻のみで判断）
+                if (h > today12Hour) return true;
+                if (h === today12Hour && m >= today12Min) return true;
+                return false;
+            });
+        }
+
         function generateRanking() {
             const input = document.getElementById('chatInput').value.trim();
             const errorMsg = document.getElementById('errorMsg');
@@ -309,14 +390,25 @@
             errorMsg.textContent = '';
 
             if (!input) {
-                errorMsg.textContent = 'チャット履歴を入力してください。';
+                errorMsg.textContent = 'チャット履歴を入力またはファイルを読み込んでください。';
                 resultArea.textContent = 'ここにランキングが表示されます';
                 return;
             }
 
-            const messages = parseChat(input);
+            let messages = parseChat(input);
             if (messages.length === 0) {
                 errorMsg.textContent = '「時刻 名前 本文」の形式で入力してください。';
+                return;
+            }
+
+            // 今日12:00以降に絞り込み
+            const beforeCount = messages.length;
+            messages = filterToday12(messages);
+            const afterCount = messages.length;
+
+            if (messages.length === 0) {
+                errorMsg.textContent = '今日12:00以降のデータが見つかりませんでした。（全' + beforeCount + '件中0件）';
+                resultArea.textContent = 'ここにランキングが表示されます';
                 return;
             }
 
@@ -373,6 +465,8 @@
             }
 
             resultArea.textContent = lines.join('\n');
+            errorMsg.textContent = '今日12:00以降の' + afterCount + '件から抽出しました';
+            errorMsg.style.color = '#48bb78';
         }
 
         function copyResult() {
@@ -380,6 +474,7 @@
             const text = resultArea.textContent;
             if (text === 'ここにランキングが表示されます') {
                 document.getElementById('errorMsg').textContent = '先にランキングを作成してください。';
+                document.getElementById('errorMsg').style.color = '#e53e3e';
                 return;
             }
             navigator.clipboard.writeText(text).then(() => {
@@ -393,6 +488,7 @@
                 }, 1500);
             }).catch(() => {
                 document.getElementById('errorMsg').textContent = 'コピーに失敗しました。手動でコピーしてください。';
+                document.getElementById('errorMsg').style.color = '#e53e3e';
             });
         }
 
