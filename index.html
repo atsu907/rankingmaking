@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>勉強時間ランキング作成</title>
     <style>
         * {
@@ -11,51 +11,53 @@
             box-sizing: border-box;
         }
         body {
-            font-family: 'Helvetica Neue', 'Segoe UI', sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             background: #f0f4f8;
             min-height: 100vh;
-            padding: 20px;
+            padding: 12px;
+            -webkit-text-size-adjust: 100%;
         }
         .container {
-            max-width: 700px;
+            max-width: 100%;
             margin: 0 auto;
         }
         h1 {
             text-align: center;
             color: #2d3748;
-            margin-bottom: 8px;
-            font-size: 1.5em;
+            margin-bottom: 4px;
+            font-size: 1.2em;
         }
         .subtitle {
             text-align: center;
             color: #718096;
-            font-size: 0.85em;
-            margin-bottom: 20px;
+            font-size: 0.75em;
+            margin-bottom: 12px;
         }
         .section {
             background: #fff;
             border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 16px;
+            padding: 14px;
+            margin-bottom: 12px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.06);
         }
         label {
             display: block;
             font-weight: 600;
             color: #2d3748;
-            margin-bottom: 6px;
-            font-size: 0.9em;
+            margin-bottom: 4px;
+            font-size: 0.85em;
         }
         textarea {
             width: 100%;
-            height: 280px;
+            height: 250px;
             border: 2px solid #e2e8f0;
             border-radius: 8px;
-            padding: 12px;
-            font-size: 0.9em;
+            padding: 10px;
+            font-size: 0.8em;
             font-family: 'SF Mono', 'Menlo', 'Monaco', monospace;
             resize: vertical;
             transition: border 0.2s;
+            -webkit-appearance: none;
         }
         textarea:focus {
             outline: none;
@@ -64,16 +66,24 @@
         .options {
             display: flex;
             flex-wrap: wrap;
-            gap: 16px;
-            margin-top: 12px;
+            gap: 10px;
+            margin-top: 10px;
         }
         .options label {
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 4px;
             font-weight: 400;
             cursor: pointer;
-            font-size: 0.85em;
+            font-size: 0.8em;
+            background: #f7fafc;
+            padding: 6px 10px;
+            border-radius: 20px;
+            border: 1px solid #e2e8f0;
+        }
+        .options label:has(input:checked) {
+            background: #ebf4ff;
+            border-color: #5a67d8;
         }
         .options input[type="checkbox"] {
             width: 16px;
@@ -82,65 +92,68 @@
         }
         button {
             width: 100%;
-            padding: 12px;
+            padding: 14px;
             background: #5a67d8;
             color: #fff;
             border: none;
-            border-radius: 8px;
+            border-radius: 10px;
             font-size: 1em;
             font-weight: 600;
             cursor: pointer;
             transition: background 0.2s;
-            margin-top: 4px;
-        }
-        button:hover {
-            background: #4c51bf;
+            margin-top: 10px;
+            -webkit-appearance: none;
+            -webkit-tap-highlight-color: transparent;
         }
         button:active {
+            background: #4c51bf;
             transform: scale(0.98);
         }
         .result-area {
             background: #1a202c;
             color: #e2e8f0;
             border-radius: 8px;
-            padding: 16px;
+            padding: 14px;
             font-family: 'SF Mono', 'Menlo', 'Monaco', monospace;
-            font-size: 0.9em;
+            font-size: 0.8em;
             white-space: pre-wrap;
             word-break: break-all;
-            min-height: 60px;
-            line-height: 1.6;
-            position: relative;
+            min-height: 50px;
+            line-height: 1.5;
+        }
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .result-header label {
+            margin-bottom: 0;
         }
         .copy-btn {
-            position: absolute;
-            top: 8px;
-            right: 8px;
             background: #4a5568;
             color: #fff;
             border: none;
             border-radius: 6px;
-            padding: 6px 12px;
+            padding: 6px 14px;
             font-size: 0.75em;
             cursor: pointer;
             width: auto;
+            -webkit-tap-highlight-color: transparent;
         }
-        .copy-btn:hover {
+        .copy-btn:active {
             background: #5a67d8;
-        }
-        .result-wrapper {
-            position: relative;
         }
         .error {
             color: #e53e3e;
-            font-size: 0.85em;
-            margin-top: 6px;
+            font-size: 0.75em;
+            margin-top: 4px;
         }
         .count-info {
             text-align: right;
             color: #a0aec0;
-            font-size: 0.75em;
-            margin-top: 4px;
+            font-size: 0.7em;
+            margin-top: 2px;
         }
     </style>
 </head>
@@ -151,25 +164,25 @@
 
         <div class="section">
             <label for="chatInput">📋 チャット履歴を貼り付け</label>
-            <textarea id="chatInput" placeholder="例：11:30 サガノデス 2時間30分でした"></textarea>
+            <textarea id="chatInput" placeholder="例：23:44 ｻｶﾞﾉﾃﾞｽ 三時間八分でした"></textarea>
             <p class="count-info" id="charCount">0文字</p>
-            
+
             <div class="options">
-                <label><input type="checkbox" id="optAt" checked> 名前に＠をつける</label>
-                <label><input type="checkbox" id="optHmin" checked> h/min表記にする</label>
-                <label><input type="checkbox" id="optShowNoReport" checked> 報告なしも表示</label>
+                <label><input type="checkbox" id="optAt" checked> ＠をつける</label>
+                <label><input type="checkbox" id="optHmin" checked> h/min表記</label>
+                <label><input type="checkbox" id="optShowNoReport" checked> 報告なし表示</label>
             </div>
-            
+
             <button onclick="generateRanking()">🔍 ランキングを作成</button>
         </div>
 
         <div class="section">
-            <label>📋 生成結果</label>
-            <div class="result-wrapper">
-                <div class="result-area" id="resultArea">
-                    ここにランキングが表示されます
-                </div>
+            <div class="result-header">
+                <label>📋 生成結果</label>
                 <button class="copy-btn" onclick="copyResult()">📋 コピー</button>
+            </div>
+            <div class="result-area" id="resultArea">
+                ここにランキングが表示されます
             </div>
             <p class="error" id="errorMsg"></p>
         </div>
@@ -222,19 +235,10 @@
             }
 
             let totalMinutes = 0;
-            const hourPatterns = [
-                /(\d+)\s*時間/,
-                /(\d+)\s*h/i,
-            ];
-            const minPatterns = [
-                /(\d+)\s*分/,
-                /(\d+)\s*min/i,
-            ];
             const combPatterns = [
                 /(\d+)\s*時間\s*(\d+)\s*分/,
                 /(\d+)\s*h\s*(\d+)\s*min/i,
             ];
-
             for (const p of combPatterns) {
                 const m = str.match(p);
                 if (m && m[1] && m[2]) {
@@ -246,23 +250,18 @@
                 return parseInt(halfMatch[1]) * 60 + 30;
             }
 
-            let hasHour = false;
-            for (const p of hourPatterns) {
-                const m = str.match(p);
-                if (m) {
-                    totalMinutes += parseInt(m[1]) * 60;
-                    hasHour = true;
-                    break;
-                }
+            const hourMatch = str.match(/(\d+)\s*時間|\s(\d+)\s*h/i);
+            const minMatch = str.match(/(\d+)\s*分|\s(\d+)\s*min/i);
+            
+            if (hourMatch) {
+                const h = parseInt(hourMatch[1] || hourMatch[2]);
+                totalMinutes += h * 60;
             }
-            for (const p of minPatterns) {
-                const m = str.match(p);
-                if (m) {
-                    totalMinutes += parseInt(m[1]);
-                    break;
-                }
+            if (minMatch) {
+                const m = parseInt(minMatch[1] || minMatch[2]);
+                totalMinutes += m;
             }
-            if (hasHour || totalMinutes > 0) return totalMinutes;
+            if (totalMinutes > 0) return totalMinutes;
 
             const decimalHour = str.match(/(\d+\.?\d*)\s*h/i);
             if (decimalHour) {
@@ -317,7 +316,7 @@
 
             const messages = parseChat(input);
             if (messages.length === 0) {
-                errorMsg.textContent = 'チャット履歴の形式が認識できませんでした。「時刻 名前 本文」の形式で入力してください。';
+                errorMsg.textContent = '「時刻 名前 本文」の形式で入力してください。';
                 return;
             }
 
@@ -337,7 +336,7 @@
             for (const [name, texts] of Object.entries(userMessages)) {
                 const combinedText = texts.join(' ');
                 const minutes = extractStudyTime(combinedText);
-                userStudyTimes.push({ name, minutes, combinedText });
+                userStudyTimes.push({ name, minutes });
             }
 
             const withTime = userStudyTimes.filter(u => u.minutes !== null);
