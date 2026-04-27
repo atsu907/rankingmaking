@@ -105,7 +105,8 @@
             border: 2px solid #e2e8f0;
             border-radius: 8px;
             font-size: 0.85em;
-            width: 120px;
+            width: 100%;
+            max-width: 300px;
             -webkit-appearance: none;
             background: #fff;
         }
@@ -116,11 +117,33 @@
         .marker-row span {
             font-size: 0.75em;
             color: #718096;
+            white-space: nowrap;
         }
         .marker-saved {
             font-size: 0.7em;
             color: #48bb78;
             display: none;
+            white-space: nowrap;
+        }
+        .marker-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 6px;
+        }
+        .marker-tag {
+            display: inline-block;
+            background: #ebf4ff;
+            color: #5a67d8;
+            padding: 4px 10px;
+            border-radius: 14px;
+            font-size: 0.75em;
+            border: 1px solid #c3dafe;
+        }
+        .marker-hint {
+            font-size: 0.65em;
+            color: #a0aec0;
+            margin-top: 4px;
         }
         .date-select {
             display: flex;
@@ -128,6 +151,12 @@
             gap: 6px;
             flex-wrap: wrap;
             margin-top: 8px;
+        }
+        .date-select .date-group {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
         }
         .date-select input[type="date"] {
             padding: 8px 10px;
@@ -137,6 +166,7 @@
             -webkit-appearance: none;
             background: #fff;
             width: 130px;
+            min-width: 130px;
         }
         .date-select input[type="date"]:focus {
             outline: none;
@@ -150,14 +180,16 @@
             -webkit-appearance: none;
             background: #fff;
             width: 100px;
+            min-width: 100px;
         }
         .date-select input[type="time"]:focus {
             outline: none;
             border-color: #5a67d8;
         }
-        .date-select span {
+        .date-select .date-label {
             font-size: 0.75em;
             color: #718096;
+            white-space: nowrap;
         }
         .filter-info {
             font-size: 0.7em;
@@ -273,20 +305,26 @@
 
             <div class="marker-row">
                 <span>時間の目印:</span>
-                <input type="text" id="markerInput" placeholder="例: $ # ! S" maxlength="10">
+                <input type="text" id="markerInput" placeholder="例: $ # 勉強 学習" maxlength="200">
                 <span class="marker-saved" id="markerSaved">保存済</span>
             </div>
+            <div class="marker-tags" id="markerTags"></div>
+            <p class="marker-hint">スペース・カンマ・改行で区切って複数指定可。目印の直後にある時間だけを拾います</p>
 
             <textarea id="chatInput" placeholder="ここにチャット履歴を貼り付けるか、ファイルを開いてください"></textarea>
             <p class="count-info" id="charCount">0文字</p>
 
             <div class="date-select">
-                <span>開始:</span>
-                <input type="date" id="startDate">
-                <input type="time" id="startTime" value="12:00">
-                <span>終了:</span>
-                <input type="date" id="endDate">
-                <input type="time" id="endTime" value="23:59">
+                <span class="date-group">
+                    <span class="date-label">開始:</span>
+                    <input type="date" id="startDate">
+                    <input type="time" id="startTime" value="12:00">
+                </span>
+                <span class="date-group">
+                    <span class="date-label">終了:</span>
+                    <input type="date" id="endDate">
+                    <input type="time" id="endTime" value="23:59">
+                </span>
             </div>
             <p class="filter-info" id="filterInfo"></p>
 
@@ -312,40 +350,63 @@
     </div>
 
     <script>
-        const STORAGE_KEY = 'study_marker';
+        const STORAGE_KEY = 'study_markers_v2';
 
-        // 保存された目印を読み込む
-        function loadMarker() {
+        function getMarkers() {
+            const raw = document.getElementById('markerInput').value.trim();
+            if (!raw) return [];
+
+            const splitPattern = /[\s　,，、\n\r]+/;
+            const items = raw.split(splitPattern).filter(s => s.length > 0);
+            return [...new Set(items)];
+        }
+
+        function updateMarkerTags() {
+            const markers = getMarkers();
+            const tagsEl = document.getElementById('markerTags');
+            if (markers.length === 0) {
+                tagsEl.innerHTML = '';
+                return;
+            }
+            tagsEl.innerHTML = markers.map(m => '<span class="marker-tag">' + escapeHTML(m) + '</span>').join('');
+        }
+
+        function escapeHTML(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        function loadMarkers() {
             const saved = localStorage.getItem(STORAGE_KEY);
             if (saved) {
                 document.getElementById('markerInput').value = saved;
+                updateMarkerTags();
             }
         }
 
-        // 目印を保存する
-        function saveMarker() {
-            const marker = document.getElementById('markerInput').value.trim();
-            if (marker) {
-                localStorage.setItem(STORAGE_KEY, marker);
-                const el = document.getElementById('markerSaved');
-                el.style.display = 'inline';
-                setTimeout(() => { el.style.display = 'none'; }, 2000);
+        function saveMarkers() {
+            const raw = document.getElementById('markerInput').value.trim();
+            if (raw) {
+                localStorage.setItem(STORAGE_KEY, raw);
             } else {
                 localStorage.removeItem(STORAGE_KEY);
-                const el = document.getElementById('markerSaved');
-                el.style.display = 'inline';
+            }
+            updateMarkerTags();
+            const el = document.getElementById('markerSaved');
+            el.style.display = 'inline';
+            if (raw) {
+                el.textContent = '保存済';
+                el.style.color = '#48bb78';
+            } else {
                 el.textContent = '解除済';
                 el.style.color = '#a0aec0';
-                setTimeout(() => {
-                    el.style.display = 'none';
-                    el.textContent = '保存済';
-                    el.style.color = '#48bb78';
-                }, 2000);
             }
+            setTimeout(() => { el.style.display = 'none'; }, 2000);
         }
 
-        document.getElementById('markerInput').addEventListener('input', saveMarker);
-        loadMarker();
+        document.getElementById('markerInput').addEventListener('input', saveMarkers);
+        loadMarkers();
 
         function setToday() {
             const now = new Date();
@@ -491,29 +552,28 @@
             return null;
         }
 
-        // 目印の後ろにある時間だけを抽出
-        function extractStudyTimeWithMarker(text, marker) {
+        function extractStudyTimeWithMarkers(text, markers) {
             let normalized = text.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
 
-            if (!marker) {
-                // 目印なし → 従来通り全体から探す
+            if (markers.length === 0) {
                 return parseTimeToMinutes(normalized);
             }
 
-            // 目印をエスケープ（正規表現の特殊文字対策）
-            const escaped = marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            const regex = new RegExp(escaped + '\\s*(.+?)(?:[。、\\n]|$)', 'g');
-
-            // 目印の後ろの部分だけを探す
             let totalMinutes = 0;
             let found = false;
-            let match;
-            while ((match = regex.exec(normalized)) !== null) {
-                const afterMarker = match[1].trim();
-                const minutes = parseTimeToMinutes(afterMarker);
-                if (minutes !== null) {
-                    totalMinutes += minutes;
-                    found = true;
+
+            for (const marker of markers) {
+                const escaped = marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const regex = new RegExp(escaped + '\\s*(.+?)(?=[。、\\n]|$)', 'g');
+
+                let match;
+                while ((match = regex.exec(normalized)) !== null) {
+                    const afterMarker = match[1].trim();
+                    const minutes = parseTimeToMinutes(afterMarker);
+                    if (minutes !== null) {
+                        totalMinutes += minutes;
+                        found = true;
+                    }
                 }
             }
 
@@ -655,11 +715,11 @@
                 return mm + '/' + dd + ' ' + hh + ':' + min;
             };
 
-            const marker = document.getElementById('markerInput').value.trim();
+            const markers = getMarkers();
 
             let infoText = formatDate(startDateTime) + ' 〜 ' + formatDate(endDateTime) + ' (' + afterCount + '件)';
-            if (marker) {
-                infoText += ' 目印: ' + marker;
+            if (markers.length > 0) {
+                infoText += ' 目印: ' + markers.join(' ');
             }
             filterInfo.textContent = infoText;
 
@@ -678,7 +738,7 @@
             const userStudyTimes = [];
             for (const [name, texts] of Object.entries(userMessages)) {
                 const combinedText = texts.join(' ');
-                const minutes = extractStudyTimeWithMarker(combinedText, marker);
+                const minutes = extractStudyTimeWithMarkers(combinedText, markers);
                 userStudyTimes.push({ name, minutes });
             }
 
