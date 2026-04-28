@@ -305,7 +305,7 @@
 
             <div class="marker-row">
                 <span>時間の目印:</span>
-                <input type="text" id="markerInput" placeholder="例: $ # 勉強 学習" maxlength="200">
+                <input type="text" id="markerInput" placeholder="例: 勉強時間報告" maxlength="200">
                 <span class="marker-saved" id="markerSaved">保存済</span>
             </div>
             <div class="marker-tags" id="markerTags"></div>
@@ -552,6 +552,53 @@
             return null;
         }
 
+        function extractLastStudyTimeWithMarkers(texts, markers) {
+            // 複数メッセージを時系列順に処理し、マーカーごとの最後の時間だけを採用
+            if (markers.length === 0) {
+                // 目印なしの場合は全テキストから探す（最後の時間を採用）
+                const allText = texts.join(' ');
+                let normalized = allText.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
+                return parseTimeToMinutes(normalized);
+            }
+
+            // マーカーがある場合、各メッセージからマーカー後の時間を探し、最後に見つかったものを採用
+            let lastMinutes = null;
+            let lastTime = null; // 時刻で比較
+
+            for (const textInfo of texts) {
+                const text = textInfo.text;
+                const time = textInfo.time;
+                let normalized = text.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
+
+                for (const marker of markers) {
+                    const escaped = marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    const regex = new RegExp(escaped + '\\s*(.+?)(?=[。、\\n]|$)', 'g');
+
+                    let match;
+                    while ((match = regex.exec(normalized)) !== null) {
+                        const afterMarker = match[1].trim();
+                        const minutes = parseTimeToMinutes(afterMarker);
+                        if (minutes !== null) {
+                            // より後に送られたメッセージの時間を採用
+                            if (lastTime === null || compareTime(time, lastTime) >= 0) {
+                                lastMinutes = minutes;
+                                lastTime = time;
+                            }
+                        }
+                    }
+                }
+            }
+
+            return lastMinutes;
+        }
+
+        function compareTime(a, b) {
+            const [ah, am] = a.split(':').map(Number);
+            const [bh, bm] = b.split(':').map(Number);
+            if (ah !== bh) return ah - bh;
+            return am - bm;
+        }
+
         function extractStudyTimeWithMarkers(text, markers) {
             let normalized = text.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
 
@@ -571,7 +618,8 @@
                     const afterMarker = match[1].trim();
                     const minutes = parseTimeToMinutes(afterMarker);
                     if (minutes !== null) {
-                        totalMinutes += minutes;
+                        // 最後に見つかったものを採用（上書き）
+                        totalMinutes = minutes;
                         found = true;
                     }
                 }
@@ -581,7 +629,6 @@
             return null;
         }
 
-        // 学校あり判定
         function hasSchool(text) {
             const patterns = [
                 /学校\s*あり|学校\s*アリ|学校\s*有り|学校\s*があった|学校\s*行っ|登校\s*あり|登校\s*アリ/,
@@ -776,25 +823,26 @@
             }
             filterInfo.textContent = infoText;
 
-            // ユーザーごとにメッセージをまとめる
             const userMessages = {};
             for (const msg of messages) {
                 if (!userMessages[msg.name]) {
                     userMessages[msg.name] = [];
                 }
-                userMessages[msg.name].push(msg.text);
+                userMessages[msg.name].push(msg);
             }
 
             const optAt = document.getElementById('optAt').checked;
             const optHmin = document.getElementById('optHmin').checked;
             const optShowNoReport = document.getElementById('optShowNoReport').checked;
 
-            // 全ユーザーの勉強時間
             const allUserTimes = [];
             const schoolUserTimes = [];
 
-            for (const [name, texts] of Object.entries(userMessages)) {
-                const combinedText = texts.join(' ');
+            for (const [name, msgs] of Object.entries(userMessages)) {
+                // 全テキストを結合
+                const combinedText = msgs.map(m => m.text).join(' ');
+
+                // 最後の報告のみ採用（extractStudyTimeWithMarkers内で上書き）
                 const minutes = extractStudyTimeWithMarkers(combinedText, markers);
                 const school = hasSchool(combinedText);
 
@@ -805,10 +853,8 @@
                 }
             }
 
-            // 総合ランキング
             const allLines = buildRankingLines(allUserTimes, optAt, optHmin, '【総合】');
 
-            // 学校ありランキング
             let schoolLines = [];
             if (schoolUserTimes.length > 0) {
                 schoolLines = buildRankingLines(schoolUserTimes, optAt, optHmin, '【学校あり】');
@@ -820,7 +866,6 @@
                 resultLines = resultLines.concat(schoolLines);
             }
 
-            // 報告なしの表示設定
             if (!optShowNoReport) {
                 resultLines = resultLines.filter(l => !l.startsWith('※'));
             }
