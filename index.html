@@ -620,7 +620,7 @@
                 const nameDisplay = prefix + user.name;
                 const timeDisplay = formatTime(user.minutes, optHmin);
                 const streak = streaks[user.name] || 0;
-                const streakStr = streak >= 2 ? '（' + streak + '日）' : '';
+                const streakStr = streak >= 2 ? '（' + streak + '日連続）' : '';
                 lines.push(rank + '位 ' + nameDisplay + ' ' + timeDisplay + (streakStr ? ' ' + streakStr : ''));
                 rank++;
             }
