@@ -62,7 +62,7 @@
             </div>
             <div class="marker-row">
                 <span>時間の目印:</span>
-                <input type="text" id="markerInput" placeholder="例: 勉強時間報告" maxlength="200">
+                <input type="text" id="markerInput" placeholder="例: 勉強時間報告" maxlength="200" value="勉強時間報告 勉強結果報告">
                 <span class="marker-saved" id="markerSaved">保存済</span>
             </div>
             <div class="marker-tags" id="markerTags"></div>
@@ -89,6 +89,7 @@
     </div>
     <script>
         const STORAGE_KEY = 'study_markers_v2';
+        const DEFAULT_MARKERS = '勉強時間報告 勉強結果報告';
         const STREAK_START = new Date(2026, 3, 27);
         const IGNORE_KEYWORD = '【今後の勉強時間ランキングの報告方法】';
 
@@ -102,10 +103,17 @@
             const el = document.getElementById('markerTags');
             el.innerHTML = markers.length === 0 ? '' : markers.map(m => '<span class="marker-tag">' + m.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</span>').join('');
         }
-        function loadMarkers() { const s = localStorage.getItem(STORAGE_KEY); if(s){ document.getElementById('markerInput').value=s; updateMarkerTags(); } }
+        function loadMarkers() {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved !== null) {
+                document.getElementById('markerInput').value = saved;
+            }
+            updateMarkerTags();
+        }
         function saveMarkers() {
             const raw = document.getElementById('markerInput').value.trim();
-            raw ? localStorage.setItem(STORAGE_KEY, raw) : localStorage.removeItem(STORAGE_KEY);
+            if (raw) localStorage.setItem(STORAGE_KEY, raw);
+            else localStorage.removeItem(STORAGE_KEY);
             updateMarkerTags();
             const el = document.getElementById('markerSaved'); el.style.display = 'inline';
             if(raw){ el.textContent='保存済'; el.style.color='#48bb78'; } else { el.textContent='解除済'; el.style.color='#a0aec0'; }
@@ -123,7 +131,6 @@
             const dd = String(now.getDate()).padStart(2,'0');
 
             if (hour < 2) {
-                // 2時前 → 前日の12:00〜今日の23:59
                 const yesterday = new Date(now);
                 yesterday.setDate(yesterday.getDate() - 1);
                 const yyyyY = yesterday.getFullYear();
@@ -131,7 +138,6 @@
                 const ddY = String(yesterday.getDate()).padStart(2,'0');
                 startDate = yyyyY+'-'+mmY+'-'+ddY;
             } else {
-                // 2時以降 → 今日の12:00〜今日の23:59
                 startDate = yyyy+'-'+mm+'-'+dd;
             }
             endDate = yyyy+'-'+mm+'-'+dd;
@@ -351,6 +357,7 @@
             }).catch(()=>{ document.getElementById('errorMsg').textContent='コピーに失敗しました。手動でコピーしてください。'; document.getElementById('errorMsg').style.color='#e53e3e'; });
         }
         updateCharCount();
+        updateMarkerTags();
     </script>
 </body>
 </html>
