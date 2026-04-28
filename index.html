@@ -134,7 +134,6 @@
         function updateCharCount() { document.getElementById('charCount').textContent = document.getElementById('chatInput').value.length + '文字'; }
         document.getElementById('chatInput').addEventListener('input', updateCharCount);
 
-        // 無視すべきメッセージかチェック
         function isIgnoredMessage(text) {
             return text.includes(IGNORE_KEYWORD);
         }
@@ -171,10 +170,14 @@
             const dh=str.match(/(\d+\.?\d*)\s*h/i); if(dh) return Math.round(parseFloat(dh[1])*60);
             return null;
         }
-        function extractStudyTimeWithMarkers(text, markers) {
+
+        // 目印の後ろのテキストから時間と属性を抽出
+        function extractFromMarker(text, markers) {
             let normalized = text.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0)-0xFEE0));
-            if(markers.length===0) return parseTimeToMinutes(normalized);
-            let lastMinutes=null, found=false;
+            if(markers.length===0) return {minutes: parseTimeToMinutes(normalized), school: false, exam: false};
+
+            let lastMinutes=null, found=false, school=false, exam=false;
+
             for(const marker of markers) {
                 const escaped = marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
                 const regex = new RegExp(escaped + '\\s*(.+?)(?=[。、\\n]|$)', 'g');
@@ -183,17 +186,18 @@
                     const after = match[1].trim();
                     if(!after) continue;
                     const minutes = parseTimeToMinutes(after);
-                    if(minutes!==null) { lastMinutes=minutes; found=true; }
+                    if(minutes!==null) {
+                        lastMinutes=minutes;
+                        found=true;
+                        // 目印の後ろのテキストから学校あり・受験生を判定
+                        if(/(?:学校|登校)\s*(?:あり|アリ|有り)/.test(after) || /🏫\s*(?:アリ|あり)/.test(after)) school=true;
+                        if(/受験生/.test(after)) exam=true;
+                    }
                 }
             }
-            return found ? lastMinutes : null;
+            return {minutes: found ? lastMinutes : null, school, exam};
         }
-        function hasSchool(text) {
-            return /学校\s*あり|学校\s*アリ|学校\s*有り|学校\s*があった|学校\s*行っ|登校\s*あり|登校\s*アリ|🏫\s*アリ|🏫\s*あり|学校あり|学校アリ|登校あり|登校アリ/.test(text);
-        }
-        function hasExam(text) {
-            return /受験生/.test(text);
-        }
+
         function parseChat(input) {
             const lines = input.split('\n'), messages = [];
             let currentDate = null;
@@ -214,7 +218,6 @@
                     last.text += ' ' + line;
                 }
             }
-            // 無視メッセージをフィルタ
             return messages.filter(msg => !msg.ignored);
         }
         function getDateTime(ds, ts) {
@@ -239,7 +242,8 @@
             const ud={};
             for(const [name,dm] of Object.entries(um)) {
                 for(const [date,texts] of Object.entries(dm)) {
-                    if(extractStudyTimeWithMarkers(texts.join(' '), markers)!==null) { if(!ud[name]) ud[name]=new Set(); ud[name].add(date); }
+                    const result = extractFromMarker(texts.join(' '), markers);
+                    if(result.minutes!==null) { if(!ud[name]) ud[name]=new Set(); ud[name].add(date); }
                 }
             }
             return {userDays:ud};
@@ -305,12 +309,13 @@
             const optAt=document.getElementById('optAt').checked, optHmin=document.getElementById('optHmin').checked, optShowNoReport=document.getElementById('optShowNoReport').checked;
             const allU=[], schoolU=[], examU=[], streaks={}, totalDays={};
             for(const [name,ms] of Object.entries(um)) {
-                const ct=ms.map(m=>m.text).join(' '), min=extractStudyTimeWithMarkers(ct,markers);
+                const ct=ms.map(m=>m.text).join(' ');
+                const result = extractFromMarker(ct, markers);
                 streaks[name]=calcStreak(userDays,name,todayStr);
                 totalDays[name]=calcTotalDays(userDays,name);
-                allU.push({name,minutes:min});
-                if(hasSchool(ct)) schoolU.push({name,minutes:min});
-                if(hasExam(ct)) examU.push({name,minutes:min});
+                allU.push({name,minutes:result.minutes});
+                if(result.school) schoolU.push({name,minutes:result.minutes});
+                if(result.exam) examU.push({name,minutes:result.minutes});
             }
             let rl=[...buildRankingLines(allU,optAt,optHmin,'勉強時間総合ランキング',streaks,totalDays,true)];
             if(schoolU.length>0) { rl.push(''); rl=rl.concat(buildRankingLines(schoolU,optAt,optHmin,'学校ありランキング',streaks,totalDays,false)); }
