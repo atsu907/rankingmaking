@@ -581,6 +581,19 @@
             return null;
         }
 
+        // 学校あり判定
+        function hasSchool(text) {
+            const patterns = [
+                /学校\s*あり|学校\s*アリ|学校\s*有り|学校\s*があった|学校\s*行っ|登校\s*あり|登校\s*アリ/,
+                /🏫\s*アリ|🏫\s*あり/,
+                /学校あり|学校アリ|登校あり|登校アリ/,
+            ];
+            for (const p of patterns) {
+                if (p.test(text)) return true;
+            }
+            return false;
+        }
+
         function parseChat(input) {
             const lines = input.split('\n');
             const messages = [];
@@ -656,6 +669,46 @@
             });
         }
 
+        function formatTime(minutes, optHmin) {
+            if (optHmin) {
+                const h = Math.floor(minutes / 60);
+                const m = minutes % 60;
+                return h + 'h' + m + 'min';
+            } else {
+                const h = Math.floor(minutes / 60);
+                const m = minutes % 60;
+                if (h > 0 && m > 0) return h + '時間' + m + '分';
+                else if (h > 0) return h + '時間';
+                else return m + '分';
+            }
+        }
+
+        function buildRankingLines(userStudyTimes, optAt, optHmin, title) {
+            const withTime = userStudyTimes.filter(u => u.minutes !== null);
+            const withoutTime = userStudyTimes.filter(u => u.minutes === null);
+
+            withTime.sort((a, b) => b.minutes - a.minutes);
+
+            const lines = [];
+            lines.push(title);
+
+            let rank = 1;
+            for (const user of withTime) {
+                const prefix = optAt ? '@' : '';
+                const nameDisplay = prefix + user.name;
+                const timeDisplay = formatTime(user.minutes, optHmin);
+                lines.push(rank + '位 ' + nameDisplay + ' ' + timeDisplay);
+                rank++;
+            }
+
+            if (withoutTime.length > 0) {
+                const noReportNames = withoutTime.map(u => (optAt ? '@' : '') + u.name).join(' ');
+                lines.push('※' + noReportNames + ' 報告なし');
+            }
+
+            return lines;
+        }
+
         function generateRanking() {
             const input = document.getElementById('chatInput').value.trim();
             const errorMsg = document.getElementById('errorMsg');
@@ -723,6 +776,7 @@
             }
             filterInfo.textContent = infoText;
 
+            // ユーザーごとにメッセージをまとめる
             const userMessages = {};
             for (const msg of messages) {
                 if (!userMessages[msg.name]) {
@@ -735,47 +789,43 @@
             const optHmin = document.getElementById('optHmin').checked;
             const optShowNoReport = document.getElementById('optShowNoReport').checked;
 
-            const userStudyTimes = [];
+            // 全ユーザーの勉強時間
+            const allUserTimes = [];
+            const schoolUserTimes = [];
+
             for (const [name, texts] of Object.entries(userMessages)) {
                 const combinedText = texts.join(' ');
                 const minutes = extractStudyTimeWithMarkers(combinedText, markers);
-                userStudyTimes.push({ name, minutes });
-            }
+                const school = hasSchool(combinedText);
 
-            const withTime = userStudyTimes.filter(u => u.minutes !== null);
-            const withoutTime = userStudyTimes.filter(u => u.minutes === null);
+                allUserTimes.push({ name, minutes });
 
-            withTime.sort((a, b) => b.minutes - a.minutes);
-
-            const lines = [];
-            lines.push('勉強時間ランキング');
-
-            let rank = 1;
-            for (const user of withTime) {
-                const prefix = optAt ? '@' : '';
-                const nameDisplay = prefix + user.name;
-                let timeDisplay;
-                if (optHmin) {
-                    const h = Math.floor(user.minutes / 60);
-                    const m = user.minutes % 60;
-                    timeDisplay = h + 'h' + m + 'min';
-                } else {
-                    const h = Math.floor(user.minutes / 60);
-                    const m = user.minutes % 60;
-                    if (h > 0 && m > 0) timeDisplay = h + '時間' + m + '分';
-                    else if (h > 0) timeDisplay = h + '時間';
-                    else timeDisplay = m + '分';
+                if (school) {
+                    schoolUserTimes.push({ name, minutes });
                 }
-                lines.push(rank + '位 ' + nameDisplay + ' ' + timeDisplay);
-                rank++;
             }
 
-            if (optShowNoReport && withoutTime.length > 0) {
-                const noReportNames = withoutTime.map(u => (optAt ? '@' : '') + u.name).join(' ');
-                lines.push('※' + noReportNames + ' 報告なし');
+            // 総合ランキング
+            const allLines = buildRankingLines(allUserTimes, optAt, optHmin, '【総合】');
+
+            // 学校ありランキング
+            let schoolLines = [];
+            if (schoolUserTimes.length > 0) {
+                schoolLines = buildRankingLines(schoolUserTimes, optAt, optHmin, '【学校あり】');
             }
 
-            resultArea.textContent = lines.join('\n');
+            let resultLines = [...allLines];
+            if (schoolLines.length > 0) {
+                resultLines.push('');
+                resultLines = resultLines.concat(schoolLines);
+            }
+
+            // 報告なしの表示設定
+            if (!optShowNoReport) {
+                resultLines = resultLines.filter(l => !l.startsWith('※'));
+            }
+
+            resultArea.textContent = resultLines.join('\n');
             errorMsg.textContent = '';
         }
 
