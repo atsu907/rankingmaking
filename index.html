@@ -351,11 +351,11 @@
 
     <script>
         const STORAGE_KEY = 'study_markers_v2';
+        const STREAK_START = new Date(2026, 3, 27); // 2026年4月27日
 
         function getMarkers() {
             const raw = document.getElementById('markerInput').value.trim();
             if (!raw) return [];
-
             const splitPattern = /[\s　,，、\n\r]+/;
             const items = raw.split(splitPattern).filter(s => s.length > 0);
             return [...new Set(items)];
@@ -423,16 +423,13 @@
             const fileInput = document.getElementById('fileInput');
             const file = fileInput.files[0];
             if (!file) return;
-
             document.getElementById('fileName').textContent = file.name;
-
             const dateMatch = file.name.match(/(\d{4})[-_.]?(\d{2})[-_.]?(\d{2})/);
             if (dateMatch) {
                 const extractedDate = dateMatch[1] + '-' + dateMatch[2] + '-' + dateMatch[3];
                 document.getElementById('startDate').value = extractedDate;
                 document.getElementById('endDate').value = extractedDate;
             }
-
             const reader = new FileReader();
             reader.onload = function(e) {
                 const text = e.target.result;
@@ -446,7 +443,6 @@
             const count = document.getElementById('chatInput').value.length;
             document.getElementById('charCount').textContent = count + '文字';
         }
-
         document.getElementById('chatInput').addEventListener('input', updateCharCount);
 
         function parseDateStr(str) {
@@ -454,23 +450,14 @@
                 /(\d{4})[.\/\-](\d{1,2})[.\/\-](\d{1,2})/,
                 /(\d{1,2})[.\/\-](\d{1,2})/,
             ];
-
             for (const p of patterns) {
                 const m = str.match(p);
                 if (m) {
                     if (m.length === 4) {
-                        return {
-                            year: parseInt(m[1]),
-                            month: parseInt(m[2]),
-                            day: parseInt(m[3])
-                        };
+                        return { year: parseInt(m[1]), month: parseInt(m[2]), day: parseInt(m[3]) };
                     } else if (m.length === 3) {
                         const now = new Date();
-                        return {
-                            year: now.getFullYear(),
-                            month: parseInt(m[1]),
-                            day: parseInt(m[2])
-                        };
+                        return { year: now.getFullYear(), month: parseInt(m[1]), day: parseInt(m[2]) };
                     }
                 }
             }
@@ -483,14 +470,11 @@
 
             let match = str.match(/([一二三四五六七八九十百]+)時間([一二三四五六七八九十]+)分/);
             if (match) {
-                let h = 0;
-                let m = 0;
-                const hStr = match[1];
-                const mStr = match[2];
+                let h = 0, m = 0;
+                const hStr = match[1], mStr = match[2];
                 if (hStr === '十') h = 10;
                 else if (hStr.length === 2 && hStr[0] === '十') h = 10 + (kanjiNum[hStr[1]] || 0);
                 else h = kanjiNum[hStr] || 0;
-
                 if (mStr === '十') m = 10;
                 else if (mStr.length === 2 && mStr[0] === '十') m = 10 + (kanjiNum[mStr[1]] || 0);
                 else m = kanjiNum[mStr] || 0;
@@ -516,117 +500,45 @@
             }
 
             let totalMinutes = 0;
-            const combPatterns = [
-                /(\d+)\s*時間\s*(\d+)\s*分/,
-                /(\d+)\s*h\s*(\d+)\s*min/i,
-            ];
+            const combPatterns = [/(\d+)\s*時間\s*(\d+)\s*分/, /(\d+)\s*h\s*(\d+)\s*min/i];
             for (const p of combPatterns) {
                 const m = str.match(p);
-                if (m && m[1] && m[2]) {
-                    return parseInt(m[1]) * 60 + parseInt(m[2]);
-                }
+                if (m && m[1] && m[2]) return parseInt(m[1]) * 60 + parseInt(m[2]);
             }
             const halfMatch = str.match(/(\d+)\s*時間半/);
-            if (halfMatch) {
-                return parseInt(halfMatch[1]) * 60 + 30;
-            }
+            if (halfMatch) return parseInt(halfMatch[1]) * 60 + 30;
 
             const hourMatch = str.match(/(\d+)\s*時間|\s(\d+)\s*h/i);
             const minMatch = str.match(/(\d+)\s*分|\s(\d+)\s*min/i);
-
-            if (hourMatch) {
-                const h = parseInt(hourMatch[1] || hourMatch[2]);
-                totalMinutes += h * 60;
-            }
-            if (minMatch) {
-                const m = parseInt(minMatch[1] || minMatch[2]);
-                totalMinutes += m;
-            }
+            if (hourMatch) totalMinutes += parseInt(hourMatch[1] || hourMatch[2]) * 60;
+            if (minMatch) totalMinutes += parseInt(minMatch[1] || minMatch[2]);
             if (totalMinutes > 0) return totalMinutes;
 
             const decimalHour = str.match(/(\d+\.?\d*)\s*h/i);
-            if (decimalHour) {
-                return Math.round(parseFloat(decimalHour[1]) * 60);
-            }
-
+            if (decimalHour) return Math.round(parseFloat(decimalHour[1]) * 60);
             return null;
-        }
-
-        function extractLastStudyTimeWithMarkers(texts, markers) {
-            // 複数メッセージを時系列順に処理し、マーカーごとの最後の時間だけを採用
-            if (markers.length === 0) {
-                // 目印なしの場合は全テキストから探す（最後の時間を採用）
-                const allText = texts.join(' ');
-                let normalized = allText.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
-                return parseTimeToMinutes(normalized);
-            }
-
-            // マーカーがある場合、各メッセージからマーカー後の時間を探し、最後に見つかったものを採用
-            let lastMinutes = null;
-            let lastTime = null; // 時刻で比較
-
-            for (const textInfo of texts) {
-                const text = textInfo.text;
-                const time = textInfo.time;
-                let normalized = text.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
-
-                for (const marker of markers) {
-                    const escaped = marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                    const regex = new RegExp(escaped + '\\s*(.+?)(?=[。、\\n]|$)', 'g');
-
-                    let match;
-                    while ((match = regex.exec(normalized)) !== null) {
-                        const afterMarker = match[1].trim();
-                        const minutes = parseTimeToMinutes(afterMarker);
-                        if (minutes !== null) {
-                            // より後に送られたメッセージの時間を採用
-                            if (lastTime === null || compareTime(time, lastTime) >= 0) {
-                                lastMinutes = minutes;
-                                lastTime = time;
-                            }
-                        }
-                    }
-                }
-            }
-
-            return lastMinutes;
-        }
-
-        function compareTime(a, b) {
-            const [ah, am] = a.split(':').map(Number);
-            const [bh, bm] = b.split(':').map(Number);
-            if (ah !== bh) return ah - bh;
-            return am - bm;
         }
 
         function extractStudyTimeWithMarkers(text, markers) {
             let normalized = text.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
+            if (markers.length === 0) return parseTimeToMinutes(normalized);
 
-            if (markers.length === 0) {
-                return parseTimeToMinutes(normalized);
-            }
-
-            let totalMinutes = 0;
+            let lastMinutes = null;
             let found = false;
-
             for (const marker of markers) {
                 const escaped = marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
                 const regex = new RegExp(escaped + '\\s*(.+?)(?=[。、\\n]|$)', 'g');
-
                 let match;
                 while ((match = regex.exec(normalized)) !== null) {
                     const afterMarker = match[1].trim();
                     const minutes = parseTimeToMinutes(afterMarker);
                     if (minutes !== null) {
-                        // 最後に見つかったものを採用（上書き）
-                        totalMinutes = minutes;
+                        lastMinutes = minutes;
                         found = true;
                     }
                 }
             }
-
-            if (found) return totalMinutes;
-            return null;
+            return found ? lastMinutes : null;
         }
 
         function hasSchool(text) {
@@ -645,38 +557,25 @@
             const lines = input.split('\n');
             const messages = [];
             let currentDate = null;
-
             const dateLinePattern = /^(\d{4}[.\/\-]\d{1,2}[.\/\-]\d{1,2}|\d{1,2}[.\/\-]\d{1,2})/;
             const timeLinePattern = /^(\d{1,2}:\d{2})\s+(.+?)\s+(.*)$/;
 
             for (let i = 0; i < lines.length; i++) {
                 const line = lines[i].trim();
                 if (!line) continue;
-
                 const dateMatch = line.match(dateLinePattern);
                 const timeMatch = line.match(timeLinePattern);
-
                 if (dateMatch && !timeMatch) {
                     const parsed = parseDateStr(line);
                     if (parsed) {
-                        currentDate = parsed.year + '/' +
-                            String(parsed.month).padStart(2, '0') + '/' +
-                            String(parsed.day).padStart(2, '0');
+                        currentDate = parsed.year + '/' + String(parsed.month).padStart(2, '0') + '/' + String(parsed.day).padStart(2, '0');
                     }
                     continue;
                 }
-
                 if (timeMatch) {
-                    messages.push({
-                        time: timeMatch[1],
-                        name: timeMatch[2].trim(),
-                        text: timeMatch[3].trim(),
-                        date: currentDate
-                    });
+                    messages.push({ time: timeMatch[1], name: timeMatch[2].trim(), text: timeMatch[3].trim(), date: currentDate });
                 } else {
-                    if (messages.length > 0) {
-                        messages[messages.length - 1].text += ' ' + line;
-                    }
+                    if (messages.length > 0) messages[messages.length - 1].text += ' ' + line;
                 }
             }
             return messages;
@@ -693,15 +592,9 @@
                 if (msg.date) {
                     const parts = msg.date.split('/');
                     const [h, m] = msg.time.split(':').map(Number);
-                    const msgDateTime = new Date(
-                        parseInt(parts[0]),
-                        parseInt(parts[1]) - 1,
-                        parseInt(parts[2]),
-                        h, m, 0
-                    );
+                    const msgDateTime = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]), h, m, 0);
                     return msgDateTime >= startDateTime && msgDateTime <= endDateTime;
                 }
-
                 const startDay = startDateTime.toDateString();
                 const endDay = endDateTime.toDateString();
                 if (startDay === endDay) {
@@ -711,7 +604,6 @@
                     const endMinutes = endDateTime.getHours() * 60 + endDateTime.getMinutes();
                     return msgMinutes >= startMinutes && msgMinutes <= endMinutes;
                 }
-
                 return false;
             });
         }
@@ -730,10 +622,68 @@
             }
         }
 
-        function buildRankingLines(userStudyTimes, optAt, optHmin, title) {
+        // 全期間から日付ごとの報告者一覧を取得
+        function getDailyReporters(allMessages, markers) {
+            // 日付ごとに報告者をまとめる
+            const dailyMap = {}; // { '2026/04/27': Set('全力少年', ...) }
+            const userDays = {}; // { '全力少年': Set('2026/04/27', ...) }
+
+            const userMessages = {};
+            for (const msg of allMessages) {
+                if (!msg.date) continue;
+                if (!userMessages[msg.name]) userMessages[msg.name] = {};
+                if (!userMessages[msg.name][msg.date]) userMessages[msg.name][msg.date] = [];
+                userMessages[msg.name][msg.date].push(msg.text);
+            }
+
+            for (const [name, dateMap] of Object.entries(userMessages)) {
+                for (const [date, texts] of Object.entries(dateMap)) {
+                    const combinedText = texts.join(' ');
+                    const minutes = extractStudyTimeWithMarkers(combinedText, markers);
+                    if (minutes !== null) {
+                        if (!dailyMap[date]) dailyMap[date] = new Set();
+                        dailyMap[date].add(name);
+                        if (!userDays[name]) userDays[name] = new Set();
+                        userDays[name].add(date);
+                    }
+                }
+            }
+
+            return { dailyMap, userDays };
+        }
+
+        // 連続日数を計算（今日基準）
+        function calcStreak(userDays, name, todayStr) {
+            if (!userDays[name]) return 0;
+
+            const today = new Date(todayStr);
+            let streak = 0;
+
+            for (let i = 0; i < 365; i++) {
+                const d = new Date(today);
+                d.setDate(d.getDate() - i);
+                if (d < STREAK_START) break;
+
+                const yyyy = d.getFullYear();
+                const mm = String(d.getMonth() + 1).padStart(2, '0');
+                const dd = String(d.getDate()).padStart(2, '0');
+                const dateKey = yyyy + '/' + mm + '/' + dd;
+
+                if (userDays[name].has(dateKey)) {
+                    streak++;
+                } else if (i === 0) {
+                    // 今日はまだ報告がないかもしれないのでスキップ
+                    continue;
+                } else {
+                    break;
+                }
+            }
+            return streak;
+        }
+
+        function buildRankingLines(userStudyTimes, optAt, optHmin, title, streaks) {
             const withTime = userStudyTimes.filter(u => u.minutes !== null);
             const withoutTime = userStudyTimes.filter(u => u.minutes === null);
-
             withTime.sort((a, b) => b.minutes - a.minutes);
 
             const lines = [];
@@ -744,7 +694,9 @@
                 const prefix = optAt ? '@' : '';
                 const nameDisplay = prefix + user.name;
                 const timeDisplay = formatTime(user.minutes, optHmin);
-                lines.push(rank + '位 ' + nameDisplay + ' ' + timeDisplay);
+                const streak = streaks[user.name] || 0;
+                const streakStr = streak >= 2 ? '（' + streak + '日）' : '';
+                lines.push(rank + '位 ' + nameDisplay + ' ' + timeDisplay + (streakStr ? ' ' + streakStr : ''));
                 rank++;
             }
 
@@ -752,7 +704,6 @@
                 const noReportNames = withoutTime.map(u => (optAt ? '@' : '') + u.name).join(' ');
                 lines.push('※' + noReportNames + ' 報告なし');
             }
-
             return lines;
         }
 
@@ -789,15 +740,22 @@
                 return;
             }
 
-            let messages = parseChat(input);
-            if (messages.length === 0) {
+            const allMessages = parseChat(input);
+            if (allMessages.length === 0) {
                 errorMsg.textContent = '"時刻 名前 本文"の形式で入力してください。';
                 filterInfo.textContent = '';
                 return;
             }
 
-            const beforeCount = messages.length;
-            messages = filterByRange(messages, startDateTime, endDateTime);
+            const markers = getMarkers();
+
+            // 全期間から連続日数計算
+            const { userDays } = getDailyReporters(allMessages, markers);
+            const todayStr = startDate; // 今日の日付
+
+            // 指定期間でフィルタ
+            const beforeCount = allMessages.length;
+            const messages = filterByRange(allMessages, startDateTime, endDateTime);
             const afterCount = messages.length;
 
             if (messages.length === 0) {
@@ -815,19 +773,13 @@
                 return mm + '/' + dd + ' ' + hh + ':' + min;
             };
 
-            const markers = getMarkers();
-
             let infoText = formatDate(startDateTime) + ' 〜 ' + formatDate(endDateTime) + ' (' + afterCount + '件)';
-            if (markers.length > 0) {
-                infoText += ' 目印: ' + markers.join(' ');
-            }
+            if (markers.length > 0) infoText += ' 目印: ' + markers.join(' ');
             filterInfo.textContent = infoText;
 
             const userMessages = {};
             for (const msg of messages) {
-                if (!userMessages[msg.name]) {
-                    userMessages[msg.name] = [];
-                }
+                if (!userMessages[msg.name]) userMessages[msg.name] = [];
                 userMessages[msg.name].push(msg);
             }
 
@@ -837,27 +789,23 @@
 
             const allUserTimes = [];
             const schoolUserTimes = [];
+            const streaks = {};
 
             for (const [name, msgs] of Object.entries(userMessages)) {
-                // 全テキストを結合
                 const combinedText = msgs.map(m => m.text).join(' ');
-
-                // 最後の報告のみ採用（extractStudyTimeWithMarkers内で上書き）
                 const minutes = extractStudyTimeWithMarkers(combinedText, markers);
                 const school = hasSchool(combinedText);
+                const streak = calcStreak(userDays, name, todayStr);
+                streaks[name] = streak;
 
                 allUserTimes.push({ name, minutes });
-
-                if (school) {
-                    schoolUserTimes.push({ name, minutes });
-                }
+                if (school) schoolUserTimes.push({ name, minutes });
             }
 
-            const allLines = buildRankingLines(allUserTimes, optAt, optHmin, '【総合】');
-
+            const allLines = buildRankingLines(allUserTimes, optAt, optHmin, '勉強時間総合ランキング', streaks);
             let schoolLines = [];
             if (schoolUserTimes.length > 0) {
-                schoolLines = buildRankingLines(schoolUserTimes, optAt, optHmin, '【学校あり】');
+                schoolLines = buildRankingLines(schoolUserTimes, optAt, optHmin, '学校ありランキング', streaks);
             }
 
             let resultLines = [...allLines];
@@ -865,7 +813,6 @@
                 resultLines.push('');
                 resultLines = resultLines.concat(schoolLines);
             }
-
             if (!optShowNoReport) {
                 resultLines = resultLines.filter(l => !l.startsWith('※'));
             }
@@ -887,10 +834,7 @@
                 const original = btn.textContent;
                 btn.textContent = 'コピー完了';
                 btn.style.background = '#48bb78';
-                setTimeout(() => {
-                    btn.textContent = original;
-                    btn.style.background = '#4a5568';
-                }, 1500);
+                setTimeout(() => { btn.textContent = original; btn.style.background = '#4a5568'; }, 1500);
             }).catch(() => {
                 document.getElementById('errorMsg').textContent = 'コピーに失敗しました。手動でコピーしてください。';
                 document.getElementById('errorMsg').style.color = '#e53e3e';
