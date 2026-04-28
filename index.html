@@ -76,8 +76,8 @@
             <p class="filter-info" id="filterInfo"></p>
             <div class="options">
                 <label><input type="checkbox" id="optAt" checked> @をつける</label>
-                <label><input type="checkbox" id="optHmin" checked> h/min表記</label>
-                <label><input type="checkbox" id="optShowNoReport" checked> 報告なし表示</label>
+                <label><input type="checkbox" id="optHmin"> h/min表記</label>
+                <label><input type="checkbox" id="optShowNoReport"> 報告なし表示</label>
             </div>
             <button onclick="generateRanking()">ランキングを作成</button>
         </div>
@@ -116,8 +116,28 @@
 
         function setToday() {
             const now = new Date();
-            const yyyy = now.getFullYear(), mm = String(now.getMonth()+1).padStart(2,'0'), dd = String(now.getDate()).padStart(2,'0');
-            document.getElementById('startDate').value = document.getElementById('endDate').value = yyyy+'-'+mm+'-'+dd;
+            const hour = now.getHours();
+            let startDate, endDate;
+            const yyyy = now.getFullYear();
+            const mm = String(now.getMonth()+1).padStart(2,'0');
+            const dd = String(now.getDate()).padStart(2,'0');
+
+            if (hour < 2) {
+                // 2時前 → 前日の12:00〜今日の23:59
+                const yesterday = new Date(now);
+                yesterday.setDate(yesterday.getDate() - 1);
+                const yyyyY = yesterday.getFullYear();
+                const mmY = String(yesterday.getMonth()+1).padStart(2,'0');
+                const ddY = String(yesterday.getDate()).padStart(2,'0');
+                startDate = yyyyY+'-'+mmY+'-'+ddY;
+            } else {
+                // 2時以降 → 今日の12:00〜今日の23:59
+                startDate = yyyy+'-'+mm+'-'+dd;
+            }
+            endDate = yyyy+'-'+mm+'-'+dd;
+
+            document.getElementById('startDate').value = startDate;
+            document.getElementById('endDate').value = endDate;
         }
         setToday();
 
@@ -171,7 +191,6 @@
             return null;
         }
 
-        // 目印の後ろのテキストから時間と属性を抽出
         function extractFromMarker(text, markers) {
             let normalized = text.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0)-0xFEE0));
             if(markers.length===0) return {minutes: parseTimeToMinutes(normalized), school: false, exam: false};
@@ -189,7 +208,6 @@
                     if(minutes!==null) {
                         lastMinutes=minutes;
                         found=true;
-                        // 目印の後ろのテキストから学校あり・受験生を判定
                         if(/(?:学校|登校)\s*(?:あり|アリ|有り)/.test(after) || /🏫\s*(?:アリ|あり)/.test(after)) school=true;
                         if(/受験生/.test(after)) exam=true;
                     }
