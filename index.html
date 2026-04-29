@@ -2,362 +2,536 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>勉強時間ランキング作成</title>
+    <title>請求書エディタ（顧客記憶・金額直接編集・空白登録OK）</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f4f8; min-height: 100vh; padding: 12px; -webkit-text-size-adjust: 100%; }
-        .container { max-width: 100%; margin: 0 auto; }
-        h1 { text-align: center; color: #2d3748; margin-bottom: 4px; font-size: 1.2em; }
-        .subtitle { text-align: center; color: #718096; font-size: 0.75em; margin-bottom: 12px; }
-        .section { background: #fff; border-radius: 12px; padding: 14px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
-        label { display: block; font-weight: 600; color: #2d3748; margin-bottom: 4px; font-size: 0.85em; }
-        textarea { width: 100%; height: 200px; border: 2px solid #e2e8f0; border-radius: 8px; padding: 10px; font-size: 0.8em; font-family: 'SF Mono', 'Menlo', 'Monaco', monospace; resize: vertical; transition: border 0.2s; -webkit-appearance: none; }
-        textarea:focus { outline: none; border-color: #5a67d8; }
-        .file-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; }
-        .file-btn { width: auto; padding: 10px 16px; background: #edf2f7; color: #2d3748; border: 2px dashed #cbd5e0; border-radius: 8px; font-size: 0.8em; font-weight: 600; cursor: pointer; white-space: nowrap; -webkit-tap-highlight-color: transparent; }
-        .file-btn:active { background: #e2e8f0; }
-        .file-name { font-size: 0.75em; color: #718096; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .marker-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
-        .marker-row input[type="text"] { padding: 8px 10px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.85em; width: 100%; max-width: 300px; -webkit-appearance: none; background: #fff; }
-        .marker-row input[type="text"]:focus { outline: none; border-color: #5a67d8; }
-        .marker-row span { font-size: 0.75em; color: #718096; white-space: nowrap; }
-        .marker-saved { font-size: 0.7em; color: #48bb78; display: none; white-space: nowrap; }
-        .marker-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
-        .marker-tag { display: inline-block; background: #ebf4ff; color: #5a67d8; padding: 4px 10px; border-radius: 14px; font-size: 0.75em; border: 1px solid #c3dafe; }
-        .marker-hint { font-size: 0.65em; color: #a0aec0; margin-top: 4px; }
-        .date-select { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
-        .date-select .date-group { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
-        .date-select input[type="date"] { padding: 8px 10px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.8em; -webkit-appearance: none; background: #fff; width: 130px; min-width: 130px; }
-        .date-select input[type="date"]:focus { outline: none; border-color: #5a67d8; }
-        .date-select input[type="time"] { padding: 8px 10px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.8em; -webkit-appearance: none; background: #fff; width: 100px; min-width: 100px; }
-        .date-select input[type="time"]:focus { outline: none; border-color: #5a67d8; }
-        .date-select .date-label { font-size: 0.75em; color: #718096; white-space: nowrap; }
-        .filter-info { font-size: 0.7em; color: #5a67d8; margin-top: 4px; }
-        .options { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
-        .options label { display: flex; align-items: center; gap: 4px; font-weight: 400; cursor: pointer; font-size: 0.8em; background: #f7fafc; padding: 6px 10px; border-radius: 20px; border: 1px solid #e2e8f0; }
-        .options label:has(input:checked) { background: #ebf4ff; border-color: #5a67d8; }
-        .options input[type="checkbox"] { width: 16px; height: 16px; accent-color: #5a67d8; }
-        button { width: 100%; padding: 14px; background: #5a67d8; color: #fff; border: none; border-radius: 10px; font-size: 1em; font-weight: 600; cursor: pointer; transition: background 0.2s; margin-top: 10px; -webkit-appearance: none; -webkit-tap-highlight-color: transparent; }
-        button:active { background: #4c51bf; transform: scale(0.98); }
-        .result-area { background: #1a202c; color: #e2e8f0; border-radius: 8px; padding: 14px; font-family: 'SF Mono', 'Menlo', 'Monaco', monospace; font-size: 0.8em; white-space: pre-wrap; word-break: break-all; min-height: 50px; line-height: 1.5; }
-        .result-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-        .result-header label { margin-bottom: 0; }
-        .copy-btn { background: #4a5568; color: #fff; border: none; border-radius: 6px; padding: 6px 14px; font-size: 0.75em; cursor: pointer; width: auto; -webkit-tap-highlight-color: transparent; }
-        .copy-btn:active { background: #5a67d8; }
-        .error { color: #e53e3e; font-size: 0.75em; margin-top: 4px; }
-        .count-info { text-align: right; color: #a0aec0; font-size: 0.7em; margin-top: 2px; }
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'メイリオ', 'MS Gothic', 'Arial', sans-serif;
+            background-color: #e9ecef;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1300px;
+            margin: 0 auto;
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+            flex-wrap: wrap;
+        }
+        .invoice {
+            flex: 2;
+            min-width: 500px;
+            background: white;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            padding: 30px 35px;
+            border-radius: 8px;
+        }
+        .invoice-header {
+            text-align: center;
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 25px;
+            letter-spacing: 4px;
+        }
+        .invoice-company {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 10px;
+            flex-wrap: wrap;
+        }
+        .invoice-date {
+            text-align: right;
+            font-size: 14px;
+        }
+        .subject {
+            margin: 15px 0 5px;
+            font-weight: bold;
+        }
+        .message {
+            margin-bottom: 20px;
+        }
+        .supplier-info {
+            text-align: right;
+            font-size: 12px;
+            line-height: 1.4;
+            border-left: 2px solid #ccc;
+            padding-left: 15px;
+            margin-top: 10px;
+        }
+        .total-row {
+            display: flex;
+            justify-content: flex-end;
+            gap: 15px;
+            margin: 20px 0;
+            font-size: 18px;
+            font-weight: bold;
+            flex-wrap: wrap;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            border: 1px solid #aaa;
+            padding: 8px 6px;
+            text-align: center;
+            font-size: 13px;
+        }
+        th {
+            background-color: #f1f3f5;
+            font-weight: bold;
+        }
+        .editable-input {
+            width: 100%;
+            border: none;
+            text-align: center;
+            background: transparent;
+            font-family: inherit;
+            font-size: 13px;
+            padding: 4px 0;
+        }
+        .editable-input:focus {
+            outline: 1px solid #007bff;
+            background: #fff;
+            border-radius: 3px;
+        }
+        .item-delete {
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 4px 8px;
+            cursor: pointer;
+            font-size: 11px;
+        }
+        .item-delete:hover {
+            background: #b02a37;
+        }
+        .toolbar {
+            flex: 1;
+            min-width: 280px;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 20px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .toolbar h3 {
+            margin-top: 0;
+        }
+        button {
+            background: #007bff;
+            border: none;
+            color: white;
+            padding: 8px 14px;
+            margin: 5px 0;
+            border-radius: 6px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 14px;
+        }
+        button.danger {
+            background: #dc3545;
+        }
+        button.warning {
+            background: #ffc107;
+            color: #212529;
+        }
+        button.success {
+            background: #28a745;
+        }
+        button:hover {
+            opacity: 0.85;
+        }
+        input, textarea, select {
+            width: 100%;
+            padding: 6px;
+            margin: 4px 0 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .batch-zone {
+            margin-top: 20px;
+            border-top: 1px solid #ccc;
+            padding-top: 15px;
+        }
+        hr {
+            margin: 15px 0;
+        }
+        .customer-history {
+            font-size: 12px;
+            background: #f8f9fa;
+            padding: 8px;
+            border-radius: 5px;
+            margin-top: 5px;
+            max-height: 120px;
+            overflow-y: auto;
+        }
+        .history-tag {
+            display: inline-block;
+            background: #e9ecef;
+            padding: 2px 8px;
+            margin: 2px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 11px;
+        }
+        .history-tag:hover {
+            background: #007bff;
+            color: white;
+        }
+        @media (max-width: 900px) {
+            .container { flex-direction: column; }
+            .invoice { min-width: auto; }
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>勉強時間ランキング作成</h1>
-        <p class="subtitle">LINEのチャット履歴からランキングを自動生成</p>
-        <div class="section">
-            <label for="chatInput">チャット履歴</label>
-            <div class="file-row">
-                <label class="file-btn" for="fileInput">ファイルを開く</label>
-                <input type="file" id="fileInput" accept=".txt" style="display:none" onchange="loadFile()">
-                <span class="file-name" id="fileName">未選択</span>
-            </div>
-            <div class="marker-row">
-                <span>時間の目印:</span>
-                <input type="text" id="markerInput" placeholder="例: 勉強時間報告" maxlength="200" value="勉強時間報告 勉強結果報告">
-                <span class="marker-saved" id="markerSaved">保存済</span>
-            </div>
-            <div class="marker-tags" id="markerTags"></div>
-            <p class="marker-hint">スペース・カンマ・改行で区切って複数指定可。目印の直後に時間がない場合は報告なし扱いです</p>
-            <textarea id="chatInput" placeholder="ここにチャット履歴を貼り付けるか、ファイルを開いてください"></textarea>
-            <p class="count-info" id="charCount">0文字</p>
-            <div class="date-select">
-                <span class="date-group"><span class="date-label">開始:</span><input type="date" id="startDate"><input type="time" id="startTime" value="12:00"></span>
-                <span class="date-group"><span class="date-label">終了:</span><input type="date" id="endDate"><input type="time" id="endTime" value="23:59"></span>
-            </div>
-            <p class="filter-info" id="filterInfo"></p>
-            <div class="options">
-                <label><input type="checkbox" id="optAt" checked> @をつける</label>
-                <label><input type="checkbox" id="optHmin"> h/min表記</label>
-                <label><input type="checkbox" id="optShowNoReport"> 報告なし表示</label>
-            </div>
-            <button onclick="generateRanking()">ランキングを作成</button>
+<div class="container">
+    <!-- 請求書プレビューエリア -->
+    <div class="invoice" id="invoicePreview">
+        <div class="invoice-header">請求書</div>
+
+        <div class="invoice-company">
+            <span id="customerName">古川自動車販売 株式会社</span>　御中
+            <span class="invoice-date" id="invoiceDate">2026/4/20</span>
         </div>
-        <div class="section">
-            <div class="result-header"><label>生成結果</label><button class="copy-btn" onclick="copyResult()">コピー</button></div>
-            <div class="result-area" id="resultArea">ここにランキングが表示されます</div>
-            <p class="error" id="errorMsg"></p>
+
+        <div class="subject">件名： <span id="subjectText">作業工賃</span></div>
+        <div class="message">下記の通り、ご請求申し上げます。</div>
+
+        <!-- 明細テーブル（直接編集可能） -->
+        <table id="itemsTable">
+            <thead>
+                <tr><th>作業内容</th><th>数量</th><th>単価(円)</th><th>金額(円)</th><th style="width:50px">削除</th></tr>
+            </thead>
+            <tbody id="itemsBody"></tbody>
+        </table>
+
+        <div class="total-row">
+            <span>小計：</span><span id="subtotal">0</span>円　　
+            <span>消費税(10%)：</span><span id="tax">0</span>円　　
+            <span>合計：</span><span id="total">0</span>円
+        </div>
+
+        <div class="supplier-info">
+            <strong>株式会社メカワーク</strong><br>
+            〒551-0003<br>
+            大阪府 大阪市 大正区 千島2-4UR 千島団地2-611<br>
+            TEL：070-3537-4004<br>
+            Email:motoyuki5611@gmail.com<br>
+            登録番号　T8120001266455
         </div>
     </div>
-    <script>
-        const STORAGE_KEY = 'study_markers_v2';
-        const DEFAULT_MARKERS = '勉強時間報告 勉強結果報告';
-        const STREAK_START = new Date(2026, 3, 27);
-        const IGNORE_KEYWORD = '【今後の勉強時間ランキングの報告方法】';
 
-        function getMarkers() {
-            const raw = document.getElementById('markerInput').value.trim();
-            if (!raw) return [];
-            return [...new Set(raw.split(/[\s　,，、\n\r]+/).filter(s => s.length > 0))];
-        }
-        function updateMarkerTags() {
-            const markers = getMarkers();
-            const el = document.getElementById('markerTags');
-            el.innerHTML = markers.length === 0 ? '' : markers.map(m => '<span class="marker-tag">' + m.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</span>').join('');
-        }
-        function loadMarkers() {
-            const saved = localStorage.getItem(STORAGE_KEY);
-            if (saved !== null) {
-                document.getElementById('markerInput').value = saved;
-            }
-            updateMarkerTags();
-        }
-        function saveMarkers() {
-            const raw = document.getElementById('markerInput').value.trim();
-            if (raw) localStorage.setItem(STORAGE_KEY, raw);
-            else localStorage.removeItem(STORAGE_KEY);
-            updateMarkerTags();
-            const el = document.getElementById('markerSaved'); el.style.display = 'inline';
-            if(raw){ el.textContent='保存済'; el.style.color='#48bb78'; } else { el.textContent='解除済'; el.style.color='#a0aec0'; }
-            setTimeout(()=>{ el.style.display='none'; }, 2000);
-        }
-        document.getElementById('markerInput').addEventListener('input', saveMarkers);
-        loadMarkers();
+    <!-- 操作パネル -->
+    <div class="toolbar">
+        <h3>📄 明細操作（空白でも登録OK）</h3>
+        <div>
+            <label>作業内容（空白でも可）</label>
+            <input type="text" id="newDesc" placeholder="例：エンジンオイル交換">
+            <label>数量</label>
+            <input type="number" id="newQty" value="1" step="1">
+            <label>単価(円)</label>
+            <input type="number" id="newPrice" value="0" step="100">
+            <button class="success" id="addItemBtn">＋ 明細を追加（空白許可）</button>
+        </div>
 
-        function setToday() {
-            const now = new Date();
-            const hour = now.getHours();
-            let startDate, endDate;
-            const yyyy = now.getFullYear();
-            const mm = String(now.getMonth()+1).padStart(2,'0');
-            const dd = String(now.getDate()).padStart(2,'0');
+        <hr>
+        <div class="batch-zone">
+            <h4>🗑️ 一括削除</h4>
+            <button id="deleteLastBtn">最後の1行を削除</button>
+            <button id="deleteSelectedBtn" class="warning">✅ チェックした行を削除</button>
+            <button id="deleteAllBtn" class="danger">⚠️ 全行削除</button>
+            <div style="margin-top:12px;">
+                <label style="font-size:13px;">
+                    <input type="checkbox" id="selectAllCheckbox"> 全選択
+                </label>
+            </div>
+        </div>
 
-            if (hour < 2) {
-                const yesterday = new Date(now);
-                yesterday.setDate(yesterday.getDate() - 1);
-                const yyyyY = yesterday.getFullYear();
-                const mmY = String(yesterday.getMonth()+1).padStart(2,'0');
-                const ddY = String(yesterday.getDate()).padStart(2,'0');
-                startDate = yyyyY+'-'+mmY+'-'+ddY;
-            } else {
-                startDate = yyyy+'-'+mm+'-'+dd;
-            }
-            endDate = yyyy+'-'+mm+'-'+dd;
+        <hr>
+        <div>
+            <h4>🏢 顧客情報（記憶機能付き）</h4>
+            <label>宛先会社名</label>
+            <input type="text" id="editCustomer" list="customerHistoryList" placeholder="入力または選択">
+            <datalist id="customerHistoryList"></datalist>
+            <button id="saveCustomerBtn">💾 現在の顧客名を記憶</button>
+            <div class="customer-history" id="customerHistoryDiv">
+                <strong>最近使った取引先：</strong><br>
+                <span id="historyTags"></span>
+            </div>
+            
+            <label>請求日</label>
+            <input type="date" id="editDate" value="2026-04-20">
+            <label>件名</label>
+            <input type="text" id="editSubject" value="作業工賃">
+            <button id="refreshInfoBtn">プレビュー更新</button>
+        </div>
+        
+        <hr>
+        <div>
+            <h4>💰 金額編集について</h4>
+            <p style="font-size:12px; color:#666;">テーブル上の「数量」「単価」をクリックして直接編集できます。<br>金額は自動再計算されます。</p>
+        </div>
+    </div>
+</div>
 
-            document.getElementById('startDate').value = startDate;
-            document.getElementById('endDate').value = endDate;
+<script>
+    // ---------- 記憶用ストレージ（localStorage） ----------
+    let customerHistory = [];
+
+    // 保存された顧客履歴を読み込み
+    function loadCustomerHistory() {
+        const stored = localStorage.getItem('invoice_customer_history');
+        if(stored) {
+            try {
+                customerHistory = JSON.parse(stored);
+            } catch(e) { customerHistory = []; }
         }
-        setToday();
-
-        function loadFile() {
-            const f = document.getElementById('fileInput').files[0];
-            if(!f) return;
-            document.getElementById('fileName').textContent = f.name;
-            const m = f.name.match(/(\d{4})[-_.]?(\d{2})[-_.]?(\d{2})/);
-            if(m){ const d=m[1]+'-'+m[2]+'-'+m[3]; document.getElementById('startDate').value=d; document.getElementById('endDate').value=d; }
-            const r = new FileReader();
-            r.onload = function(e){ document.getElementById('chatInput').value=e.target.result; updateCharCount(); };
-            r.readAsText(f, 'UTF-8');
+        if(!customerHistory.length) {
+            // 初期サンプル履歴
+            customerHistory = ["古川自動車販売 株式会社", "いすゞ自動車近畿", "株式会社メカワーク", "フジラインエキスプレス"];
         }
-        function updateCharCount() { document.getElementById('charCount').textContent = document.getElementById('chatInput').value.length + '文字'; }
-        document.getElementById('chatInput').addEventListener('input', updateCharCount);
+        updateCustomerUI();
+    }
 
-        function isIgnoredMessage(text) {
-            return text.includes(IGNORE_KEYWORD);
-        }
+    // 顧客名を記憶（重複を避けて先頭に追加）
+    function saveCustomerName(name) {
+        if(!name || name.trim() === "") return;
+        const trimmed = name.trim();
+        // 既存を削除して先頭に追加
+        customerHistory = customerHistory.filter(c => c !== trimmed);
+        customerHistory.unshift(trimmed);
+        // 最大20件まで保持
+        if(customerHistory.length > 20) customerHistory.pop();
+        localStorage.setItem('invoice_customer_history', JSON.stringify(customerHistory));
+        updateCustomerUI();
+    }
 
-        function parseDateStr(str) {
-            for(const p of [/(\d{4})[.\/\-](\d{1,2})[.\/\-](\d{1,2})/, /(\d{1,2})[.\/\-](\d{1,2})/]) {
-                const m = str.match(p);
-                if(m) return m.length===4 ? {year:parseInt(m[1]),month:parseInt(m[2]),day:parseInt(m[3])} : {year:new Date().getFullYear(),month:parseInt(m[1]),day:parseInt(m[2])};
-            }
-            return null;
-        }
-        function parseTimeToMinutes(str) {
-            str = str.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0)-0xFEE0));
-            const K = {一:1,二:2,三:3,四:4,五:5,六:6,七:7,八:8,九:9,十:10,百:100};
-            let m = str.match(/([一二三四五六七八九十百]+)時間([一二三四五六七八九十]+)分/);
-            if(m) {
-                let h=0, min=0;
-                const hs=m[1], ms=m[2];
-                if(hs==='十') h=10; else if(hs.length===2&&hs[0]==='十') h=10+(K[hs[1]]||0); else h=K[hs]||0;
-                if(ms==='十') min=10; else if(ms.length===2&&ms[0]==='十') min=10+(K[ms[1]]||0); else min=K[ms]||0;
-                return h*60+min;
-            }
-            m=str.match(/([一二三四五六七八九十百]+)時間/);
-            if(m){ const hs=m[1]; let h=0; if(hs==='十') h=10; else if(hs.length===2&&hs[0]==='十') h=10+(K[hs[1]]||0); else h=K[hs]||0; return h*60; }
-            m=str.match(/([一二三四五六七八九十]+)分/);
-            if(m){ const ms=m[1]; let min=0; if(ms==='十') min=10; else if(ms.length===2&&ms[0]==='十') min=10+(K[ms[1]]||0); else min=K[ms]||0; return min; }
-            let t=0;
-            for(const p of [/(\d+)\s*時間\s*(\d+)\s*分/, /(\d+)\s*h\s*(\d+)\s*min/i]) { const x=str.match(p); if(x&&x[1]&&x[2]) return parseInt(x[1])*60+parseInt(x[2]); }
-            const hf=str.match(/(\d+)\s*時間半/); if(hf) return parseInt(hf[1])*60+30;
-            const hm=str.match(/(\d+)\s*時間|\s(\d+)\s*h/i), mm=str.match(/(\d+)\s*分|\s(\d+)\s*min/i);
-            if(hm) t+=parseInt(hm[1]||hm[2])*60;
-            if(mm) t+=parseInt(mm[1]||mm[2]);
-            if(t>0) return t;
-            const dh=str.match(/(\d+\.?\d*)\s*h/i); if(dh) return Math.round(parseFloat(dh[1])*60);
-            return null;
-        }
+    // 顧客UI（datalist + 履歴表示）を更新
+    function updateCustomerUI() {
+        const datalist = document.getElementById('customerHistoryList');
+        datalist.innerHTML = '';
+        customerHistory.forEach(name => {
+            const option = document.createElement('option');
+            option.value = name;
+            datalist.appendChild(option);
+        });
+        const historySpan = document.getElementById('historyTags');
+        historySpan.innerHTML = '';
+        customerHistory.slice(0, 10).forEach(name => {
+            const tag = document.createElement('span');
+            tag.className = 'history-tag';
+            tag.innerText = name.length > 18 ? name.slice(0,15)+'…' : name;
+            tag.title = name;
+            tag.onclick = () => {
+                document.getElementById('editCustomer').value = name;
+                updateBasicInfo();
+                saveCustomerName(name); // クリックでさらに前面に
+            };
+            historySpan.appendChild(tag);
+        });
+    }
 
-        function extractFromMarker(text, markers) {
-            let normalized = text.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0)-0xFEE0));
-            if(markers.length===0) return {minutes: parseTimeToMinutes(normalized), school: false, exam: false};
+    // ---------- 明細データ（直接編集対応のためにオブジェクト参照） ----------
+    let items = [
+        { desc: "サーモスタッド交換", qty: 2, price: 18000 },
+        { desc: "インナーシール交換", qty: 2, price: 7500 },
+        { desc: "クラッチOH", qty: 1, price: 55000 }
+    ];
 
-            let lastMinutes=null, found=false, school=false, exam=false;
-
-            for(const marker of markers) {
-                const escaped = marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                const regex = new RegExp(escaped + '\\s*(.+?)(?=[。、\\n]|$)', 'g');
-                let match;
-                while((match=regex.exec(normalized))!==null) {
-                    const after = match[1].trim();
-                    if(!after) continue;
-                    const minutes = parseTimeToMinutes(after);
-                    if(minutes!==null) {
-                        lastMinutes=minutes;
-                        found=true;
-                        if(/(?:学校|登校)\s*(?:あり|アリ|有り)/.test(after) || /🏫\s*(?:アリ|あり)/.test(after)) school=true;
-                        if(/受験生/.test(after)) exam=true;
-                    }
-                }
-            }
-            return {minutes: found ? lastMinutes : null, school, exam};
-        }
-
-        function parseChat(input) {
-            const lines = input.split('\n'), messages = [];
-            let currentDate = null;
-            for(let i=0; i<lines.length; i++) {
-                const line = lines[i].trim();
-                if(!line) continue;
-                const dm = line.match(/^(\d{4}[.\/\-]\d{1,2}[.\/\-]\d{1,2}|\d{1,2}[.\/\-]\d{1,2})/);
-                const tm = line.match(/^(\d{1,2}:\d{2})\s+(.+?)\s+(.*)$/);
-                if(dm && !tm) { const p=parseDateStr(line); if(p) currentDate=p.year+'/'+String(p.month).padStart(2,'0')+'/'+String(p.day).padStart(2,'0'); continue; }
-                if(tm) {
-                    const msg = {time:tm[1],name:tm[2].trim(),text:tm[3].trim(),date:currentDate,ignored:false};
-                    if(isIgnoredMessage(msg.text)) msg.ignored = true;
-                    messages.push(msg);
-                }
-                else if(messages.length>0) {
-                    const last = messages[messages.length-1];
-                    if(isIgnoredMessage(line)) last.ignored = true;
-                    last.text += ' ' + line;
-                }
-            }
-            return messages.filter(msg => !msg.ignored);
-        }
-        function getDateTime(ds, ts) {
-            const [y,m,d]=ds.split('-').map(Number), [h,min]=ts.split(':').map(Number);
-            return new Date(y,m-1,d,h,min,0);
-        }
-        function filterByRange(msgs, s, e) {
-            return msgs.filter(msg => {
-                if(msg.date) { const p=msg.date.split('/'), [h,m]=msg.time.split(':').map(Number); const dt=new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2]),h,m,0); return dt>=s&&dt<=e; }
-                if(s.toDateString()===e.toDateString()) { const [h,m]=msg.time.split(':').map(Number), mm=h*60+m, sm=s.getHours()*60+s.getMinutes(), em=e.getHours()*60+e.getMinutes(); return mm>=sm&&mm<=em; }
-                return false;
+    // 全再描画（テーブルを構築 + イベント付与）
+    function renderTable() {
+        const tbody = document.getElementById('itemsBody');
+        tbody.innerHTML = '';
+        let subtotal = 0;
+        
+        items.forEach((item, idx) => {
+            const amount = item.qty * item.price;
+            subtotal += amount;
+            const row = tbody.insertRow();
+            
+            // 作業内容（テキスト編集可）
+            const descCell = row.insertCell(0);
+            const descInput = document.createElement('input');
+            descInput.type = 'text';
+            descInput.value = item.desc;
+            descInput.className = 'editable-input';
+            descInput.addEventListener('change', (e) => { items[idx].desc = e.target.value; recalcAndRender(); });
+            descCell.appendChild(descInput);
+            
+            // 数量（数値編集可）
+            const qtyCell = row.insertCell(1);
+            const qtyInput = document.createElement('input');
+            qtyInput.type = 'number';
+            qtyInput.value = item.qty;
+            qtyInput.step = '1';
+            qtyInput.className = 'editable-input';
+            qtyInput.addEventListener('change', (e) => { 
+                let newQty = parseInt(e.target.value, 10);
+                if(isNaN(newQty)) newQty = 0;
+                items[idx].qty = newQty;
+                recalcAndRender();
             });
+            qtyCell.appendChild(qtyInput);
+            
+            // 単価（数値編集可）
+            const priceCell = row.insertCell(2);
+            const priceInput = document.createElement('input');
+            priceInput.type = 'number';
+            priceInput.value = item.price;
+            priceInput.step = '100';
+            priceInput.className = 'editable-input';
+            priceInput.addEventListener('change', (e) => {
+                let newPrice = parseInt(e.target.value, 10);
+                if(isNaN(newPrice)) newPrice = 0;
+                items[idx].price = newPrice;
+                recalcAndRender();
+            });
+            priceCell.appendChild(priceInput);
+            
+            // 金額（表示のみ）
+            const amountCell = row.insertCell(3);
+            amountCell.innerText = amount.toLocaleString();
+            
+            // 削除用チェックボックス＋ボタン
+            const delCell = row.insertCell(4);
+            const chk = document.createElement('input');
+            chk.type = 'checkbox';
+            chk.className = 'rowSelect';
+            chk.setAttribute('data-idx', idx);
+            delCell.appendChild(chk);
+            const delBtn = document.createElement('button');
+            delBtn.innerText = '×';
+            delBtn.className = 'item-delete';
+            delBtn.onclick = (function(i) { return function() { deleteSingleItem(i); }; })(idx);
+            delCell.appendChild(delBtn);
+        });
+        
+        // 合計計算
+        const tax = Math.round(subtotal * 0.1);
+        const total = subtotal + tax;
+        document.getElementById('subtotal').innerText = subtotal.toLocaleString();
+        document.getElementById('tax').innerText = tax.toLocaleString();
+        document.getElementById('total').innerText = total.toLocaleString();
+        
+        // 全選択チェックボックスの状態同期
+        const selectAllChk = document.getElementById('selectAllCheckbox');
+        const allBoxes = document.querySelectorAll('.rowSelect');
+        if(selectAllChk) {
+            const allChecked = allBoxes.length > 0 && Array.from(allBoxes).every(cb => cb.checked);
+            selectAllChk.checked = allChecked;
         }
-        function formatTime(min, opt) {
-            if(opt) { const h=Math.floor(min/60), m=min%60; return h+'h'+m+'min'; }
-            else { const h=Math.floor(min/60), m=min%60; if(h>0&&m>0) return h+'時間'+m+'分'; else if(h>0) return h+'時間'; else return m+'分'; }
+    }
+    
+    function recalcAndRender() { renderTable(); }
+    
+    function deleteSingleItem(idx) {
+        items.splice(idx, 1);
+        renderTable();
+    }
+    
+    function deleteLast() {
+        if(items.length) items.pop();
+        renderTable();
+    }
+    
+    function deleteSelected() {
+        const checkboxes = document.querySelectorAll('.rowSelect');
+        const indices = [];
+        checkboxes.forEach(cb => {
+            if(cb.checked) indices.push(parseInt(cb.getAttribute('data-idx')));
+        });
+        indices.sort((a,b)=>b-a);
+        for(let i of indices) items.splice(i,1);
+        renderTable();
+    }
+    
+    function deleteAll() {
+        if(confirm('全ての明細行を削除しますか？')) {
+            items = [];
+            renderTable();
         }
-        function getDailyReporters(all, markers) {
-            if(markers.length===0) return {userDays:{}};
-            const um={};
-            for(const msg of all) { if(!msg.date) continue; if(!um[msg.name]) um[msg.name]={}; if(!um[msg.name][msg.date]) um[msg.name][msg.date]=[]; um[msg.name][msg.date].push(msg.text); }
-            const ud={};
-            for(const [name,dm] of Object.entries(um)) {
-                for(const [date,texts] of Object.entries(dm)) {
-                    const result = extractFromMarker(texts.join(' '), markers);
-                    if(result.minutes!==null) { if(!ud[name]) ud[name]=new Set(); ud[name].add(date); }
-                }
-            }
-            return {userDays:ud};
+    }
+    
+    // 新規追加：空白でもOK（数量や単価は0でも保存）
+    function addItemFlexible() {
+        const desc = document.getElementById('newDesc').value;  // 空白許容
+        let qty = parseInt(document.getElementById('newQty').value, 10);
+        let price = parseInt(document.getElementById('newPrice').value, 10);
+        if(isNaN(qty)) qty = 0;
+        if(isNaN(price)) price = 0;
+        items.push({ desc: desc || "(空白)", qty: qty, price: price });
+        renderTable();
+        // 入力欄をクリアしない（連続入力しやすいように値だけリセットしないことも多いが、任意）
+        document.getElementById('newDesc').value = '';
+        document.getElementById('newQty').value = '1';
+        document.getElementById('newPrice').value = '0';
+    }
+    
+    // 基本情報更新
+    function updateBasicInfo() {
+        const cust = document.getElementById('editCustomer').value;
+        const dateRaw = document.getElementById('editDate').value;
+        const subject = document.getElementById('editSubject').value;
+        document.getElementById('customerName').innerText = cust || '---';
+        if(dateRaw) document.getElementById('invoiceDate').innerText = dateRaw.replace(/-/g, '/');
+        document.getElementById('subjectText').innerText = subject || '作業工賃';
+    }
+    
+    // 現在の顧客名を記憶ボタン
+    function saveCurrentCustomer() {
+        const custName = document.getElementById('editCustomer').value;
+        if(custName && custName.trim() !== "") {
+            saveCustomerName(custName.trim());
+            alert(`「${custName}」を記憶しました`);
+        } else {
+            alert("顧客名が空です");
         }
-        function calcStreak(ud, name, todayStr) {
-            if(!ud[name]) return 0;
-            const today=new Date(todayStr); let streak=0;
-            for(let i=0; i<365; i++) {
-                const d=new Date(today); d.setDate(d.getDate()-i);
-                if(d<STREAK_START) break;
-                const dk=d.getFullYear()+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+String(d.getDate()).padStart(2,'0');
-                if(ud[name].has(dk)) streak++;
-                else if(i===0) continue;
-                else break;
-            }
-            return streak;
+    }
+    
+    // 全選択機能
+    function bindSelectAll() {
+        const selectAll = document.getElementById('selectAllCheckbox');
+        if(selectAll) {
+            selectAll.onchange = (e) => {
+                const allBoxes = document.querySelectorAll('.rowSelect');
+                allBoxes.forEach(cb => cb.checked = e.target.checked);
+            };
         }
-        function calcTotalDays(ud, name) {
-            if(!ud[name]) return 0;
-            let count=0;
-            for(const date of ud[name]) {
-                const p=date.split('/'); const d=new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2]));
-                if(d>=STREAK_START) count++;
-            }
-            return count;
-        }
-        function buildRankingLines(users, optAt, optHmin, title, streaks, totalDays, showStreak) {
-            const w=users.filter(u=>u.minutes!==null), wo=users.filter(u=>u.minutes===null);
-            w.sort((a,b)=>b.minutes-a.minutes);
-            const lines=[title]; let rank=1;
-            for(const u of w) {
-                const p=optAt?'@':'', nd=p+u.name, td=formatTime(u.minutes,optHmin);
-                lines.push(rank+'位 '+nd+' '+td);
-                if(showStreak) {
-                    const s=streaks[u.name]||0, t=totalDays[u.name]||0;
-                    if(s>=2 && t>=1) lines.push(' （'+s+'日連/通算'+t+'日）');
-                    else if(t>=1) lines.push(' （通算'+t+'日）');
-                }
-                rank++;
-            }
-            if(wo.length>0) lines.push('※'+wo.map(u=>(optAt?'@':'')+u.name).join(' ')+' 報告なし');
-            return lines;
-        }
-        function generateRanking() {
-            const input=document.getElementById('chatInput').value.trim(), em=document.getElementById('errorMsg'), ra=document.getElementById('resultArea'), fi=document.getElementById('filterInfo');
-            em.textContent=''; em.style.color='#e53e3e';
-            if(!input) { em.textContent='チャット履歴を入力またはファイルを読み込んでください。'; ra.textContent='ここにランキングが表示されます'; fi.textContent=''; return; }
-            const sd=document.getElementById('startDate').value, st=document.getElementById('startTime').value, ed=document.getElementById('endDate').value, et=document.getElementById('endTime').value;
-            if(!sd||!ed) { em.textContent='開始日と終了日を設定してください。'; return; }
-            const sdt=getDateTime(sd,st), edt=getDateTime(ed,et);
-            if(sdt>edt) { em.textContent='開始日時が終了日時より後になっています。'; return; }
-            const all=parseChat(input);
-            if(all.length===0) { em.textContent='"時刻 名前 本文"の形式で入力してください。'; fi.textContent=''; return; }
-            const markers=getMarkers();
-            const {userDays}=getDailyReporters(all,markers);
-            const todayStr=sd;
-            const bc=all.length, msgs=filterByRange(all,sdt,edt), ac=msgs.length;
-            if(msgs.length===0) { em.textContent='指定期間内のデータが見つかりませんでした。（全体'+bc+'件中0件）'; ra.textContent='ここにランキングが表示されます'; fi.textContent=''; return; }
-            const fd=d=>{ const mm=String(d.getMonth()+1).padStart(2,'0'),dd=String(d.getDate()).padStart(2,'0'),hh=String(d.getHours()).padStart(2,'0'),min=String(d.getMinutes()).padStart(2,'0'); return mm+'/'+dd+' '+hh+':'+min; };
-            let it=fd(sdt)+' 〜 '+fd(edt)+' ('+ac+'件)'; if(markers.length>0) it+=' 目印: '+markers.join(' '); fi.textContent=it;
-            const um={};
-            for(const msg of msgs) { if(!um[msg.name]) um[msg.name]=[]; um[msg.name].push(msg); }
-            const optAt=document.getElementById('optAt').checked, optHmin=document.getElementById('optHmin').checked, optShowNoReport=document.getElementById('optShowNoReport').checked;
-            const allU=[], schoolU=[], examU=[], streaks={}, totalDays={};
-            for(const [name,ms] of Object.entries(um)) {
-                const ct=ms.map(m=>m.text).join(' ');
-                const result = extractFromMarker(ct, markers);
-                streaks[name]=calcStreak(userDays,name,todayStr);
-                totalDays[name]=calcTotalDays(userDays,name);
-                allU.push({name,minutes:result.minutes});
-                if(result.school) schoolU.push({name,minutes:result.minutes});
-                if(result.exam) examU.push({name,minutes:result.minutes});
-            }
-            let rl=[...buildRankingLines(allU,optAt,optHmin,'勉強時間総合ランキング',streaks,totalDays,true)];
-            if(schoolU.length>0) { rl.push(''); rl=rl.concat(buildRankingLines(schoolU,optAt,optHmin,'学校ありランキング',streaks,totalDays,false)); }
-            if(examU.length>0) { rl.push(''); rl=rl.concat(buildRankingLines(examU,optAt,optHmin,'受験生ランキング',streaks,totalDays,false)); }
-            if(!optShowNoReport) rl=rl.filter(l=>!l.startsWith('※'));
-            ra.textContent=rl.join('\n'); em.textContent='';
-        }
-        function copyResult() {
-            const ra=document.getElementById('resultArea'), t=ra.textContent;
-            if(t==='ここにランキングが表示されます') { document.getElementById('errorMsg').textContent='先にランキングを作成してください。'; document.getElementById('errorMsg').style.color='#e53e3e'; return; }
-            navigator.clipboard.writeText(t).then(()=>{
-                const btn=document.querySelector('.copy-btn'), o=btn.textContent;
-                btn.textContent='コピー完了'; btn.style.background='#48bb78';
-                setTimeout(()=>{ btn.textContent=o; btn.style.background='#4a5568'; },1500);
-            }).catch(()=>{ document.getElementById('errorMsg').textContent='コピーに失敗しました。手動でコピーしてください。'; document.getElementById('errorMsg').style.color='#e53e3e'; });
-        }
-        updateCharCount();
-        updateMarkerTags();
-    </script>
+    }
+    
+    // 初期化とイベント
+    function init() {
+        loadCustomerHistory();
+        renderTable();
+        bindSelectAll();
+        
+        document.getElementById('addItemBtn').onclick = addItemFlexible;
+        document.getElementById('deleteLastBtn').onclick = deleteLast;
+        document.getElementById('deleteSelectedBtn').onclick = deleteSelected;
+        document.getElementById('deleteAllBtn').onclick = deleteAll;
+        document.getElementById('refreshInfoBtn').onclick = updateBasicInfo;
+        document.getElementById('saveCustomerBtn').onclick = saveCurrentCustomer;
+        
+        // プレビュー反映
+        updateBasicInfo();
+        
+        // テーブル再描画時に全選択のイベントを維持するためにMutationObserverは不要（ボタンの再バインドは問題ない）
+        // ただし動的にcheckboxが増えても全選択ボタンは機能する（querySelectorAllで毎回取得するため）
+    }
+    
+    init();
+</script>
 </body>
 </html>
