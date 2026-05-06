@@ -156,13 +156,18 @@
             return text.includes(IGNORE_KEYWORD);
         }
 
+        // 日付行の厳格な判定: 2026.05.07 木曜日 形式のみ
+        function isDateLine(line) {
+            // 年.月.日 または 年/月/日 または 年-月-日 で始まり、後に曜日などが続く
+            return /^\d{4}[.\/\-]\d{1,2}[.\/\-]\d{1,2}\s/.test(line);
+        }
+
         function parseDateStr(str) {
-            for(const p of [/(\d{4})[.\/\-](\d{1,2})[.\/\-](\d{1,2})/, /(\d{1,2})[.\/\-](\d{1,2})/]) {
-                const m = str.match(p);
-                if(m) return m.length===4 ? {year:parseInt(m[1]),month:parseInt(m[2]),day:parseInt(m[3])} : {year:new Date().getFullYear(),month:parseInt(m[1]),day:parseInt(m[2])};
-            }
+            const m = str.match(/(\d{4})[.\/\-](\d{1,2})[.\/\-](\d{1,2})/);
+            if(m) return {year:parseInt(m[1]),month:parseInt(m[2]),day:parseInt(m[3])};
             return null;
         }
+
         function parseTimeToMinutes(str) {
             str = str.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0)-0xFEE0));
             const K = {一:1,二:2,三:3,四:4,五:5,六:6,七:7,八:8,九:9,十:10,百:100};
@@ -179,13 +184,14 @@
             m=str.match(/([一二三四五六七八九十]+)分/);
             if(m){ const ms=m[1]; let min=0; if(ms==='十') min=10; else if(ms.length===2&&ms[0]==='十') min=10+(K[ms[1]]||0); else min=K[ms]||0; return min; }
             let t=0;
-            for(const p of [/(\d+)\s*時間\s*(\d+)\s*分/, /(\d+)\s*h\s*(\d+)\s*min/i]) { const x=str.match(p); if(x&&x[1]&&x[2]) return parseInt(x[1])*60+parseInt(x[2]); }
+            for(const p of [/(\d+)\s*時間\s*(\d+)\s*分/, /(\d+)\s*h\s*(\d+)\s*min/i, /(\d+)\s*h\s*(\d+)\s*m\b/i]) { const x=str.match(p); if(x&&x[1]&&x[2]) return parseInt(x[1])*60+parseInt(x[2]); }
             const hf=str.match(/(\d+)\s*時間半/); if(hf) return parseInt(hf[1])*60+30;
-            const hm=str.match(/(\d+)\s*時間|\s(\d+)\s*h/i), mm=str.match(/(\d+)\s*分|\s(\d+)\s*min/i);
-            if(hm) t+=parseInt(hm[1]||hm[2])*60;
-            if(mm) t+=parseInt(mm[1]||mm[2]);
+            const hm=str.match(/(\d+)\s*時間|\s(\d+)\s*h\b|\b(\d+)\s*h\b/i);
+            if(hm) { const h = parseInt(hm[1]||hm[2]||hm[3]); if(h) t+=h*60; }
+            const mm=str.match(/(\d+)\s*分|\s(\d+)\s*min\b|\b(\d+)\s*min\b|\s(\d+)\s*m\b|\b(\d+)\s*m\b/i);
+            if(mm) { const min = parseInt(mm[1]||mm[2]||mm[3]||mm[4]||mm[5]); if(min) t+=min; }
             if(t>0) return t;
-            const dh=str.match(/(\d+\.?\d*)\s*h/i); if(dh) return Math.round(parseFloat(dh[1])*60);
+            const dh=str.match(/(\d+\.?\d*)\s*h\b/i); if(dh) return Math.round(parseFloat(dh[1])*60);
             return null;
         }
 
@@ -195,7 +201,7 @@
             let lastMinutes=null, found=false, school=false, exam=false;
             for(const marker of markers) {
                 const escaped = marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                const regex = new RegExp(escaped + '\\s*(.+?)(?=[。、\\n]|$)', 'g');
+                const regex = new RegExp(escaped + '\\s*(.*)$', 'gm');
                 let match;
                 while((match=regex.exec(normalized))!==null) {
                     const after = match[1].trim();
@@ -214,18 +220,27 @@
         function parseChat(input) {
             const lines = input.split('\n'), messages = [];
             let currentDate = null;
+            const timeLinePattern = /^(\d{1,2}:\d{2})\s+(.+?)\s+(.*)$/;
+
             for(let i=0; i<lines.length; i++) {
                 const line = lines[i].trim();
                 if(!line) continue;
-                const dm = line.match(/^(\d{4}[.\/\-]\d{1,2}[.\/\-]\d{1,2}|\d{1,2}[.\/\-]\d{1,2})/);
-                const tm = line.match(/^(\d{1,2}:\d{2})\s+(.+?)\s+(.*)$/);
-                if(dm && !tm) { const p=parseDateStr(line); if(p) currentDate=p.year+'/'+String(p.month).padStart(2,'0')+'/'+String(p.day).padStart(2,'0'); continue; }
-                if(tm) {
-                    const msg = {time:tm[1],name:tm[2].trim(),text:tm[3].trim(),date:currentDate,ignored:false};
+
+                const timeMatch = line.match(timeLinePattern);
+
+                if(!timeMatch && isDateLine(line)) {
+                    const parsed = parseDateStr(line);
+                    if(parsed) {
+                        currentDate = parsed.year+'/'+String(parsed.month).padStart(2,'0')+'/'+String(parsed.day).padStart(2,'0');
+                    }
+                    continue;
+                }
+
+                if(timeMatch) {
+                    const msg = {time:timeMatch[1],name:timeMatch[2].trim(),text:timeMatch[3].trim(),date:currentDate,ignored:false};
                     if(isIgnoredMessage(msg.text)) msg.ignored = true;
                     messages.push(msg);
-                }
-                else if(messages.length>0) {
+                } else if(messages.length>0) {
                     const last = messages[messages.length-1];
                     if(isIgnoredMessage(line)) last.ignored = true;
                     last.text += ' ' + line;
@@ -233,14 +248,26 @@
             }
             return messages.filter(msg => !msg.ignored);
         }
+
         function getDateTime(ds, ts) {
             const [y,m,d]=ds.split('-').map(Number), [h,min]=ts.split(':').map(Number);
             return new Date(y,m-1,d,h,min,0);
         }
         function filterByRange(msgs, s, e) {
             return msgs.filter(msg => {
-                if(msg.date) { const p=msg.date.split('/'), [h,m]=msg.time.split(':').map(Number); const dt=new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2]),h,m,0); return dt>=s&&dt<=e; }
-                if(s.toDateString()===e.toDateString()) { const [h,m]=msg.time.split(':').map(Number), mm=h*60+m, sm=s.getHours()*60+s.getMinutes(), em=e.getHours()*60+e.getMinutes(); return mm>=sm&&mm<=em; }
+                if(msg.date) {
+                    const p=msg.date.split('/');
+                    const [h,m]=msg.time.split(':').map(Number);
+                    const dt=new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2]),h,m,0);
+                    return dt>=s&&dt<=e;
+                }
+                if(s.toDateString()===e.toDateString()) {
+                    const [h,m]=msg.time.split(':').map(Number);
+                    const mm=h*60+m;
+                    const sm=s.getHours()*60+s.getMinutes();
+                    const em=e.getHours()*60+e.getMinutes();
+                    return mm>=sm&&mm<=em;
+                }
                 return false;
             });
         }
