@@ -155,13 +155,9 @@
         function isIgnoredMessage(text) {
             return text.includes(IGNORE_KEYWORD);
         }
-
-        // 日付行の厳格な判定: 2026.05.07 木曜日 形式のみ
         function isDateLine(line) {
-            // 年.月.日 または 年/月/日 または 年-月-日 で始まり、後に曜日などが続く
             return /^\d{4}[.\/\-]\d{1,2}[.\/\-]\d{1,2}\s/.test(line);
         }
-
         function parseDateStr(str) {
             const m = str.match(/(\d{4})[.\/\-](\d{1,2})[.\/\-](\d{1,2})/);
             if(m) return {year:parseInt(m[1]),month:parseInt(m[2]),day:parseInt(m[3])};
@@ -198,23 +194,33 @@
         function extractFromMarker(text, markers) {
             let normalized = text.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0)-0xFEE0));
             if(markers.length===0) return {minutes: parseTimeToMinutes(normalized), school: false, exam: false};
-            let lastMinutes=null, found=false, school=false, exam=false;
+
+            // テキスト全体から最後の目印の位置を探す
+            let lastPos = -1;
+            let lastMarker = '';
             for(const marker of markers) {
                 const escaped = marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                const regex = new RegExp(escaped + '\\s*(.*)$', 'gm');
+                const regex = new RegExp(escaped, 'g');
                 let match;
-                while((match=regex.exec(normalized))!==null) {
-                    const after = match[1].trim();
-                    if(!after) continue;
-                    const minutes = parseTimeToMinutes(after);
-                    if(minutes!==null) {
-                        lastMinutes=minutes; found=true;
-                        if(/(?:学校|登校)\s*(?:あり|アリ|有り)/.test(after) || /🏫\s*(?:アリ|あり)/.test(after)) school=true;
-                        if(/受験生/.test(after)) exam=true;
+                while((match = regex.exec(normalized)) !== null) {
+                    if(match.index > lastPos) {
+                        lastPos = match.index;
+                        lastMarker = marker;
                     }
                 }
             }
-            return {minutes: found ? lastMinutes : null, school, exam};
+
+            if(lastPos === -1) return {minutes: null, school: false, exam: false};
+
+            // 最後の目印の後ろだけを取得
+            const after = normalized.substring(lastPos + lastMarker.length).trim();
+            if(!after) return {minutes: null, school: false, exam: false};
+
+            const minutes = parseTimeToMinutes(after);
+            const school = /(?:学校|登校)\s*(?:あり|アリ|有り)/.test(after) || /🏫\s*(?:アリ|あり)/.test(after);
+            const exam = /受験生/.test(after);
+
+            return {minutes, school, exam};
         }
 
         function parseChat(input) {
