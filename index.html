@@ -156,7 +156,7 @@
             return text.includes(IGNORE_KEYWORD);
         }
         function isDateLine(line) {
-            return /^\d{4}[.\/\-]\d{1,2}[.\/\-]\d{1,2}\s/.test(line);
+            return /^\d{4}[.\/\-]\d{1,2}[.\/\-]\d{1,2}/.test(line);
         }
         function parseDateStr(str) {
             const m = str.match(/(\d{4})[.\/\-](\d{1,2})[.\/\-](\d{1,2})/);
@@ -195,7 +195,6 @@
             let normalized = text.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0)-0xFEE0));
             if(markers.length===0) return {minutes: parseTimeToMinutes(normalized), school: false, exam: false};
 
-            // テキスト全体から最後の目印の位置を探す
             let lastPos = -1;
             let lastMarker = '';
             for(const marker of markers) {
@@ -212,7 +211,6 @@
 
             if(lastPos === -1) return {minutes: null, school: false, exam: false};
 
-            // 最後の目印の後ろだけを取得
             const after = normalized.substring(lastPos + lastMarker.length).trim();
             if(!after) return {minutes: null, school: false, exam: false};
 
