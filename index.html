@@ -53,11 +53,11 @@
         /* グラフ用スタイル（縦並び） */
         .chart-section { margin-top: 16px; }
         .chart-title { font-weight: 600; color: #2d3748; font-size: 0.85em; margin-bottom: 8px; }
-        .chart-container { display: flex; flex-direction: column; gap: 1px; padding: 12px 8px; background: #fff; }
-        .chart-entry { display: flex; flex-direction: column; gap: 1px; }
+        .chart-container { display: flex; flex-direction: column; gap: 10px; padding: 12px 8px; background: #fff; }
+        .chart-entry { display: flex; flex-direction: column; gap: 2px; }
         .chart-name { font-size: 0.7em; color: #2d3748; line-height: 1.2; }
         .chart-bar-row { display: flex; align-items: center; gap: 8px; }
-        .chart-bar-bg { flex: 1; background: #e2e8f0; height: 10px; border-radius: 4px; overflow: hidden; }
+        .chart-bar-bg { flex: 1; background: #e2e8f0; height: 20px; border-radius: 4px; overflow: hidden; }
         .chart-bar { height: 100%; background: #5a67d8; border-radius: 4px; width: 0%; transition: width 0.3s; }
         .chart-time { font-size: 0.7em; color: #718096; width: 40px; text-align: right; white-space: nowrap; }
     </style>
@@ -169,7 +169,10 @@
         function updateCharCount() { document.getElementById('charCount').textContent = document.getElementById('chatInput').value.length + '文字'; }
         document.getElementById('chatInput').addEventListener('input', updateCharCount);
 
-        function isIgnoredMessage(text) { return text.includes(IGNORE_KEYWORD); }
+        function isIgnoredMessage(text) {
+            const patterns = IGNORE_KEYWORD.split('|');
+            return patterns.some(p => text.includes(p));
+        }
         function isDateLine(line) { return /^\d{4}[.\/\-]\d{1,2}[.\/\-]\d{1,2}/.test(line); }
         function parseDateStr(str) {
             const m = str.match(/(\d{4})[.\/\-](\d{1,2})[.\/\-](\d{1,2})/);
@@ -204,25 +207,36 @@
             return null;
         }
 
+        // ★ 修正済み: 最後の目印に時間がなければ前の目印を採用
         function extractFromMarker(text, markers) {
             let normalized = text.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0)-0xFEE0));
             if(markers.length===0) return {minutes: parseTimeToMinutes(normalized), school: false, exam: false};
-            let lastPos = -1, lastMarker = '';
+
+            // すべてのマーカーと出現位置を収集
+            const occurrences = [];
             for(const marker of markers) {
                 const escaped = marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
                 const regex = new RegExp(escaped, 'g');
                 let match;
                 while((match = regex.exec(normalized)) !== null) {
-                    if(match.index > lastPos) { lastPos = match.index; lastMarker = marker; }
+                    occurrences.push({ index: match.index, marker: marker });
                 }
             }
-            if(lastPos === -1) return {minutes: null, school: false, exam: false};
-            const after = normalized.substring(lastPos + lastMarker.length).trim();
-            if(!after) return {minutes: null, school: false, exam: false};
-            const minutes = parseTimeToMinutes(after);
-            const school = /(?:学校|登校)\s*(?:あり|アリ|有り)/.test(after) || /🏫\s*(?:アリ|あり)/.test(after);
-            const exam = /受験生/.test(after);
-            return {minutes, school, exam};
+            // 位置の降順（後ろから）にソート
+            occurrences.sort((a, b) => b.index - a.index);
+
+            // 後ろの出現から順に時間を探す
+            for(const occ of occurrences) {
+                const after = normalized.substring(occ.index + occ.marker.length).trim();
+                if(!after) continue;
+                const minutes = parseTimeToMinutes(after);
+                if(minutes !== null) {
+                    const school = /(?:学校|登校)\s*(?:あり|アリ|有り)/.test(after) || /🏫\s*(?:アリ|あり)/.test(after);
+                    const exam = /受験生/.test(after);
+                    return {minutes, school, exam};
+                }
+            }
+            return {minutes: null, school: false, exam: false};
         }
 
         function parseChat(input) {
