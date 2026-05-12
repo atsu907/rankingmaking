@@ -279,6 +279,23 @@
             if(opt) { const h=Math.floor(min/60), m=min%60; return h+'h'+m+'min'; }
             else { const h=Math.floor(min/60), m=min%60; if(h>0&&m>0) return h+'時間'+m+'分'; else if(h>0) return h+'時間'; else return m+'分'; }
         }
+        function getMonthlyTotalMinutes(allMessages, markers, name, todayStr) {
+            const today = new Date(todayStr);
+            const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+            let total = 0;
+            for(const msg of allMessages) {
+                if(msg.name !== name || !msg.date) continue;
+                const p = msg.date.split('/');
+                const d = new Date(parseInt(p[0]), parseInt(p[1])-1, parseInt(p[2]));
+                if(d < monthStart) continue;
+                const text = msg.text;
+                const result = extractFromMarker(text, markers);
+                if(result.minutes !== null) {
+                    total += result.minutes;
+                }
+            }
+            return total;
+        }
         function getDailyReporters(all, markers) {
             if(markers.length===0) return {userDays:{}};
             const um={};
@@ -292,25 +309,19 @@
             }
             return {userDays:ud};
         }
-        function calcTotalDays(ud, name) {
-            if(!ud[name]) return 0;
-            let count=0;
-            for(const date of ud[name]) {
-                const p=date.split('/'); const d=new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2]));
-                if(d>=STREAK_START) count++;
-            }
-            return count;
-        }
-        function buildRankingLines(users, optAt, optHmin, title, totalDays, showStreak) {
+        function buildRankingLines(users, optAt, optHmin, title, monthlyTotals, showMonthly) {
             const w=users.filter(u=>u.minutes!==null), wo=users.filter(u=>u.minutes===null);
             w.sort((a,b)=>b.minutes-a.minutes);
             const lines=[title]; let rank=1;
             for(const u of w) {
                 const p=optAt?'@':'', nd=p+u.name, td=formatTime(u.minutes,optHmin);
                 lines.push(rank+'位 '+nd+' '+td);
-                if(showStreak) {
-                    const t=totalDays[u.name]||0;
-                    if(t>=1) lines.push(' （通算'+t+'日）');
+                if(showMonthly) {
+                    const mt = monthlyTotals[u.name] || 0;
+                    if(mt > 0) {
+                        const hours = Math.floor(mt / 60);
+                        lines.push(' （今月合計 '+hours+'h）');
+                    }
                 }
                 rank++;
             }
@@ -328,7 +339,6 @@
             const all=parseChat(input);
             if(all.length===0) { em.textContent='"時刻 名前 本文"の形式で入力してください。'; fi.textContent=''; return; }
             const markers=getMarkers();
-            const {userDays}=getDailyReporters(all,markers);
             const todayStr=sd;
             const bc=all.length, msgs=filterByRange(all,sdt,edt), ac=msgs.length;
             if(msgs.length===0) { em.textContent='指定期間内のデータが見つかりませんでした。（全体'+bc+'件中0件）'; ra.textContent='ここにランキングが表示されます'; fi.textContent=''; return; }
@@ -337,18 +347,19 @@
             const um={};
             for(const msg of msgs) { if(!um[msg.name]) um[msg.name]=[]; um[msg.name].push(msg); }
             const optAt=document.getElementById('optAt').checked, optHmin=document.getElementById('optHmin').checked, optShowNoReport=document.getElementById('optShowNoReport').checked;
-            const allU=[], schoolU=[], examU=[], totalDays={};
+            const allU=[], schoolU=[], examU=[], monthlyTotals={};
             for(const [name,ms] of Object.entries(um)) {
                 const ct=ms.map(m=>m.text).join(' ');
                 const result = extractFromMarker(ct, markers);
-                totalDays[name]=calcTotalDays(userDays,name);
+                const totalMin = getMonthlyTotalMinutes(all, markers, name, todayStr);
+                monthlyTotals[name] = totalMin;
                 allU.push({name,minutes:result.minutes});
                 if(result.school) schoolU.push({name,minutes:result.minutes});
                 if(result.exam) examU.push({name,minutes:result.minutes});
             }
-            let rl=[...buildRankingLines(allU,optAt,optHmin,'勉強時間総合ランキング',totalDays,true)];
-            if(schoolU.length>0) { rl.push(''); rl=rl.concat(buildRankingLines(schoolU,optAt,optHmin,'学校ありランキング',totalDays,false)); }
-            if(examU.length>0) { rl.push(''); rl=rl.concat(buildRankingLines(examU,optAt,optHmin,'受験生ランキング',totalDays,false)); }
+            let rl=[...buildRankingLines(allU,optAt,optHmin,'勉強時間総合ランキング',monthlyTotals,true)];
+            if(schoolU.length>0) { rl.push(''); rl=rl.concat(buildRankingLines(schoolU,optAt,optHmin,'学校ありランキング',monthlyTotals,false)); }
+            if(examU.length>0) { rl.push(''); rl=rl.concat(buildRankingLines(examU,optAt,optHmin,'受験生ランキング',monthlyTotals,false)); }
             if(!optShowNoReport) rl=rl.filter(l=>!l.startsWith('※'));
             ra.textContent=rl.join('\n'); em.textContent='';
         }
