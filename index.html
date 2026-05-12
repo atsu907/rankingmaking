@@ -47,6 +47,16 @@
         .copy-btn:active { background: #5a67d8; }
         .error { color: #e53e3e; font-size: 0.75em; margin-top: 4px; }
         .count-info { text-align: right; color: #a0aec0; font-size: 0.7em; margin-top: 2px; }
+
+        /* グラフ用スタイル（コンパクト） */
+        .chart-section { margin-top: 16px; display: none; }
+        .chart-title { font-weight: 600; color: #2d3748; font-size: 0.85em; margin-bottom: 8px; }
+        .chart-container { display: flex; flex-direction: column; gap: 4px; }
+        .chart-row { display: flex; align-items: center; gap: 8px; margin-bottom: 2px; }
+        .chart-name { font-size: 0.7em; color: #2d3748; width: 72px; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .chart-bar-bg { flex: 1; background: #e2e8f0; height: 12px; border-radius: 3px; overflow: hidden; }
+        .chart-bar { height: 100%; background: #5a67d8; border-radius: 3px; width: 0%; transition: width 0.3s; }
+        .chart-time { font-size: 0.7em; color: #718096; width: 38px; text-align: right; white-space: nowrap; }
     </style>
 </head>
 <body>
@@ -85,12 +95,16 @@
             <div class="result-header"><label>生成結果</label><button class="copy-btn" onclick="copyResult()">コピー</button></div>
             <div class="result-area" id="resultArea">ここにランキングが表示されます</div>
             <p class="error" id="errorMsg"></p>
+            <!-- 月別合計グラフ -->
+            <div class="chart-section" id="chartSection">
+                <div class="chart-title">月別合計時間</div>
+                <div class="chart-container" id="chartContainer"></div>
+            </div>
         </div>
     </div>
     <script>
         const STORAGE_KEY = 'study_markers_v2';
         const DEFAULT_MARKERS = '勉強時間報告 勉強結果報告';
-        const STREAK_START = new Date(2026, 3, 27);
         const IGNORE_KEYWORD = '【今後の勉強時間ランキングの報告方法】';
 
         function getMarkers() {
@@ -152,12 +166,8 @@
         function updateCharCount() { document.getElementById('charCount').textContent = document.getElementById('chatInput').value.length + '文字'; }
         document.getElementById('chatInput').addEventListener('input', updateCharCount);
 
-        function isIgnoredMessage(text) {
-            return text.includes(IGNORE_KEYWORD);
-        }
-        function isDateLine(line) {
-            return /^\d{4}[.\/\-]\d{1,2}[.\/\-]\d{1,2}/.test(line);
-        }
+        function isIgnoredMessage(text) { return text.includes(IGNORE_KEYWORD); }
+        function isDateLine(line) { return /^\d{4}[.\/\-]\d{1,2}[.\/\-]\d{1,2}/.test(line); }
         function parseDateStr(str) {
             const m = str.match(/(\d{4})[.\/\-](\d{1,2})[.\/\-](\d{1,2})/);
             if(m) return {year:parseInt(m[1]),month:parseInt(m[2]),day:parseInt(m[3])};
@@ -194,30 +204,21 @@
         function extractFromMarker(text, markers) {
             let normalized = text.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0)-0xFEE0));
             if(markers.length===0) return {minutes: parseTimeToMinutes(normalized), school: false, exam: false};
-
-            let lastPos = -1;
-            let lastMarker = '';
+            let lastPos = -1, lastMarker = '';
             for(const marker of markers) {
                 const escaped = marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
                 const regex = new RegExp(escaped, 'g');
                 let match;
                 while((match = regex.exec(normalized)) !== null) {
-                    if(match.index > lastPos) {
-                        lastPos = match.index;
-                        lastMarker = marker;
-                    }
+                    if(match.index > lastPos) { lastPos = match.index; lastMarker = marker; }
                 }
             }
-
             if(lastPos === -1) return {minutes: null, school: false, exam: false};
-
             const after = normalized.substring(lastPos + lastMarker.length).trim();
             if(!after) return {minutes: null, school: false, exam: false};
-
             const minutes = parseTimeToMinutes(after);
             const school = /(?:学校|登校)\s*(?:あり|アリ|有り)/.test(after) || /🏫\s*(?:アリ|あり)/.test(after);
             const exam = /受験生/.test(after);
-
             return {minutes, school, exam};
         }
 
@@ -225,21 +226,15 @@
             const lines = input.split('\n'), messages = [];
             let currentDate = null;
             const timeLinePattern = /^(\d{1,2}:\d{2})\s+(.+?)\s+(.*)$/;
-
             for(let i=0; i<lines.length; i++) {
                 const line = lines[i].trim();
                 if(!line) continue;
-
                 const timeMatch = line.match(timeLinePattern);
-
                 if(!timeMatch && isDateLine(line)) {
                     const parsed = parseDateStr(line);
-                    if(parsed) {
-                        currentDate = parsed.year+'/'+String(parsed.month).padStart(2,'0')+'/'+String(parsed.day).padStart(2,'0');
-                    }
+                    if(parsed) currentDate = parsed.year+'/'+String(parsed.month).padStart(2,'0')+'/'+String(parsed.day).padStart(2,'0');
                     continue;
                 }
-
                 if(timeMatch) {
                     const msg = {time:timeMatch[1],name:timeMatch[2].trim(),text:timeMatch[3].trim(),date:currentDate,ignored:false};
                     if(isIgnoredMessage(msg.text)) msg.ignored = true;
@@ -260,16 +255,13 @@
         function filterByRange(msgs, s, e) {
             return msgs.filter(msg => {
                 if(msg.date) {
-                    const p=msg.date.split('/');
-                    const [h,m]=msg.time.split(':').map(Number);
+                    const p=msg.date.split('/'), [h,m]=msg.time.split(':').map(Number);
                     const dt=new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2]),h,m,0);
                     return dt>=s&&dt<=e;
                 }
                 if(s.toDateString()===e.toDateString()) {
-                    const [h,m]=msg.time.split(':').map(Number);
-                    const mm=h*60+m;
-                    const sm=s.getHours()*60+s.getMinutes();
-                    const em=e.getHours()*60+e.getMinutes();
+                    const [h,m]=msg.time.split(':').map(Number), mm=h*60+m;
+                    const sm=s.getHours()*60+s.getMinutes(), em=e.getHours()*60+e.getMinutes();
                     return mm>=sm&&mm<=em;
                 }
                 return false;
@@ -288,11 +280,8 @@
                 const p = msg.date.split('/');
                 const d = new Date(parseInt(p[0]), parseInt(p[1])-1, parseInt(p[2]));
                 if(d < monthStart) continue;
-                const text = msg.text;
-                const result = extractFromMarker(text, markers);
-                if(result.minutes !== null) {
-                    total += result.minutes;
-                }
+                const result = extractFromMarker(msg.text, markers);
+                if(result.minutes !== null) total += result.minutes;
             }
             return total;
         }
@@ -328,6 +317,56 @@
             if(wo.length>0) lines.push('※'+wo.map(u=>(optAt?'@':'')+u.name).join(' ')+' 報告なし');
             return lines;
         }
+
+        // グラフ描画
+        function renderChart(monthlyTotals) {
+            const chartSection = document.getElementById('chartSection');
+            const chartContainer = document.getElementById('chartContainer');
+            chartContainer.innerHTML = '';
+            const entries = Object.entries(monthlyTotals)
+                .filter(([, min]) => min > 0)
+                .sort((a, b) => b[1] - a[1]);
+            if (entries.length === 0) {
+                chartSection.style.display = 'none';
+                return;
+            }
+            const maxMin = entries[0][1];
+            const optAt = document.getElementById('optAt').checked;
+
+            for (const [name, min] of entries) {
+                const hours = Math.floor(min / 60);
+                const percent = (min / maxMin) * 100;
+                const displayName = (optAt ? '@' : '') + name;
+                // 6文字上限、超えたら省略
+                const shortName = displayName.length > 6 ? displayName.substring(0, 5) + '…' : displayName;
+
+                const row = document.createElement('div');
+                row.className = 'chart-row';
+
+                const nameDiv = document.createElement('div');
+                nameDiv.className = 'chart-name';
+                nameDiv.textContent = shortName;
+                nameDiv.title = displayName + ' ' + hours + 'h';
+
+                const barBg = document.createElement('div');
+                barBg.className = 'chart-bar-bg';
+                const bar = document.createElement('div');
+                bar.className = 'chart-bar';
+                bar.style.width = percent + '%';
+
+                const timeDiv = document.createElement('div');
+                timeDiv.className = 'chart-time';
+                timeDiv.textContent = hours + 'h';
+
+                barBg.appendChild(bar);
+                row.appendChild(nameDiv);
+                row.appendChild(barBg);
+                row.appendChild(timeDiv);
+                chartContainer.appendChild(row);
+            }
+            chartSection.style.display = 'block';
+        }
+
         function generateRanking() {
             const input=document.getElementById('chatInput').value.trim(), em=document.getElementById('errorMsg'), ra=document.getElementById('resultArea'), fi=document.getElementById('filterInfo');
             em.textContent=''; em.style.color='#e53e3e';
@@ -362,7 +401,9 @@
             if(examU.length>0) { rl.push(''); rl=rl.concat(buildRankingLines(examU,optAt,optHmin,'受験生ランキング',monthlyTotals,false)); }
             if(!optShowNoReport) rl=rl.filter(l=>!l.startsWith('※'));
             ra.textContent=rl.join('\n'); em.textContent='';
+            renderChart(monthlyTotals);
         }
+
         function copyResult() {
             const ra=document.getElementById('resultArea'), t=ra.textContent;
             if(t==='ここにランキングが表示されます') { document.getElementById('errorMsg').textContent='先にランキングを作成してください。'; document.getElementById('errorMsg').style.color='#e53e3e'; return; }
