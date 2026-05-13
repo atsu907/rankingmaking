@@ -291,17 +291,27 @@
         function getMonthlyTotalMinutes(allMessages, markers, name, todayStr) {
             const today = new Date(todayStr);
             const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-            let total = 0;
+            const dailyTimes = {}; // 日付ごとの最後の時間を記録するオブジェクト
+
             for(const msg of allMessages) {
                 if(msg.name !== name || !msg.date) continue;
-                const p = msg.date.split('/');
-                const d = new Date(parseInt(p[0]), parseInt(p[1])-1, parseInt(p[2]));
+                const d = new Date(parseInt(p[0]), parseInt(p[1])-1, parseInt(p[2])); // メッセージの日付
                 if(d < monthStart) continue;
+
                 const result = extractFromMarker(msg.text, markers);
-                if(result.minutes !== null) total += result.minutes;
-            }
-            return total;
+                if(result.minutes !== null) {
+            // 同じ日付なら上書き（最後の報告だけが残る）
+                    dailyTimes[msg.date] = result.minutes;
         }
+    }
+
+    // 各日の最後の報告時間を合計
+    let total = 0;
+    for(const minutes of Object.values(dailyTimes)) {
+        total += minutes;
+    }
+    return total;
+}
         function buildRankingLines(users, optAt, optHmin, title, monthlyTotals, showMonthly) {
             const w=users.filter(u=>u.minutes!==null), wo=users.filter(u=>u.minutes===null);
             w.sort((a,b)=>b.minutes-a.minutes);
