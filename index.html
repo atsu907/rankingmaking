@@ -207,32 +207,31 @@
             return null;
         }
 
-        // ★ 修正済み: 最後の目印に時間がなければ前の目印を採用
+        // ★ 履歴の修正: 最後に有効な時間を探し、なければ前の報告を採用
         function extractFromMarker(text, markers) {
             let normalized = text.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0)-0xFEE0));
             if(markers.length===0) return {minutes: parseTimeToMinutes(normalized), school: false, exam: false};
 
-            // すべてのマーカーと出現位置を収集
-            const occurrences = [];
+            const allMatches = [];
             for(const marker of markers) {
                 const escaped = marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
                 const regex = new RegExp(escaped, 'g');
                 let match;
                 while((match = regex.exec(normalized)) !== null) {
-                    occurrences.push({ index: match.index, marker: marker });
+                    allMatches.push({ index: match.index, marker: marker });
                 }
             }
-            // 位置の降順（後ろから）にソート
-            occurrences.sort((a, b) => b.index - a.index);
+            // 出現位置の降順（後ろから）にソート
+            allMatches.sort((a, b) => b.index - a.index);
 
             // 後ろの出現から順に時間を探す
-            for(const occ of occurrences) {
-                const after = normalized.substring(occ.index + occ.marker.length).trim();
-                if(!after) continue;
-                const minutes = parseTimeToMinutes(after);
+            for(const match of allMatches) {
+                const afterText = normalized.substring(match.index + match.marker.length).trim();
+                if(!afterText) continue;
+                const minutes = parseTimeToMinutes(afterText);
                 if(minutes !== null) {
-                    const school = /(?:学校|登校)\s*(?:あり|アリ|有り)/.test(after) || /🏫\s*(?:アリ|あり)/.test(after);
-                    const exam = /受験生/.test(after);
+                    const school = /(?:学校|登校)\s*(?:あり|アリ|有り)/.test(afterText) || /🏫\s*(?:アリ|あり)/.test(afterText);
+                    const exam = /受験生/.test(afterText);
                     return {minutes, school, exam};
                 }
             }
@@ -288,30 +287,29 @@
             if(opt) { const h=Math.floor(min/60), m=min%60; return h+'h'+m+'min'; }
             else { const h=Math.floor(min/60), m=min%60; if(h>0&&m>0) return h+'時間'+m+'分'; else if(h>0) return h+'時間'; else return m+'分'; }
         }
+
+        // ★ 月間合計の計算: 同一日は最後の有効な報告だけを合計
         function getMonthlyTotalMinutes(allMessages, markers, name, todayStr) {
             const today = new Date(todayStr);
             const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-            const dailyTimes = {}; // 日付ごとの最後の時間を記録するオブジェクト
-
+            const dailyTimes = {};
             for(const msg of allMessages) {
                 if(msg.name !== name || !msg.date) continue;
-                const d = new Date(parseInt(p[0]), parseInt(p[1])-1, parseInt(p[2])); // メッセージの日付
+                const p = msg.date.split('/');
+                const d = new Date(parseInt(p[0]), parseInt(p[1])-1, parseInt(p[2]));
                 if(d < monthStart) continue;
-
                 const result = extractFromMarker(msg.text, markers);
                 if(result.minutes !== null) {
-            // 同じ日付なら上書き（最後の報告だけが残る）
                     dailyTimes[msg.date] = result.minutes;
+                }
+            }
+            let total = 0;
+            for(const minutes of Object.values(dailyTimes)) {
+                total += minutes;
+            }
+            return total;
         }
-    }
 
-    // 各日の最後の報告時間を合計
-    let total = 0;
-    for(const minutes of Object.values(dailyTimes)) {
-        total += minutes;
-    }
-    return total;
-}
         function buildRankingLines(users, optAt, optHmin, title, monthlyTotals, showMonthly) {
             const w=users.filter(u=>u.minutes!==null), wo=users.filter(u=>u.minutes===null);
             w.sort((a,b)=>b.minutes-a.minutes);
@@ -332,7 +330,6 @@
             return lines;
         }
 
-        // グラフ描画（縦並び：名前→バー）
         function renderChart(monthlyTotals) {
             const chartSection = document.getElementById('chartSection');
             const chartContainer = document.getElementById('chartContainer');
