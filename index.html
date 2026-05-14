@@ -50,10 +50,9 @@
         .error { color: #e53e3e; font-size: 0.75em; margin-top: 4px; }
         .count-info { text-align: right; color: #a0aec0; font-size: 0.7em; margin-top: 2px; }
 
-        /* グラフ用スタイル（縦並び） */
         .chart-section { margin-top: 16px; }
         .chart-title { font-weight: 600; color: #2d3748; font-size: 0.85em; margin-bottom: 8px; }
-        .chart-container { display: flex; flex-direction: column; gap: 5px; padding: 12px 8px; background: #fff; }
+        .chart-container { display: flex; flex-direction: column; gap:5px; padding: 12px 8px; background: #fff; }
         .chart-entry { display: flex; flex-direction: column; gap: 2px; }
         .chart-name { font-size: 0.7em; color: #2d3748; line-height: 1.2; }
         .chart-bar-row { display: flex; align-items: center; gap: 8px; }
@@ -143,7 +142,7 @@
             const yyyy = now.getFullYear();
             const mm = String(now.getMonth()+1).padStart(2,'0');
             const dd = String(now.getDate()).padStart(2,'0');
-            if (hour < 2) {
+            if (hour < 9) {
                 const yesterday = new Date(now);
                 yesterday.setDate(yesterday.getDate() - 1);
                 startDate = yesterday.getFullYear()+'-'+String(yesterday.getMonth()+1).padStart(2,'0')+'-'+String(yesterday.getDate()).padStart(2,'0');
@@ -207,7 +206,6 @@
             return null;
         }
 
-        // ★ 履歴の修正: 最後に有効な時間を探し、なければ前の報告を採用
         function extractFromMarker(text, markers) {
             let normalized = text.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0)-0xFEE0));
             if(markers.length===0) return {minutes: parseTimeToMinutes(normalized), school: false, exam: false};
@@ -221,16 +219,14 @@
                     allMatches.push({ index: match.index, marker: marker });
                 }
             }
-            // 出現位置の降順（後ろから）にソート
             allMatches.sort((a, b) => b.index - a.index);
 
-            // 後ろの出現から順に時間を探す
             for(const match of allMatches) {
                 const afterText = normalized.substring(match.index + match.marker.length).trim();
                 if(!afterText) continue;
                 const minutes = parseTimeToMinutes(afterText);
                 if(minutes !== null) {
-                    const school = /(?:学校|登校)\s*(?:あり|アリ|有り)/.test(afterText) || /🏫\s*(?:アリ|あり)/.test(afterText);
+                    const school = /(?:學校|登校)\s*(?:あり|アリ|有り)/.test(afterText) || /🏫\s*(?:アリ|あり)/.test(afterText);
                     const exam = /受験生/.test(afterText);
                     return {minutes, school, exam};
                 }
@@ -288,7 +284,6 @@
             else { const h=Math.floor(min/60), m=min%60; if(h>0&&m>0) return h+'時間'+m+'分'; else if(h>0) return h+'時間'; else return m+'分'; }
         }
 
-        // ★ 月間合計の計算: 同一日は最後の有効な報告だけを合計
         function getMonthlyTotalMinutes(allMessages, markers, name, todayStr) {
             const today = new Date(todayStr);
             const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -328,6 +323,32 @@
             }
             if(wo.length>0) lines.push('※'+wo.map(u=>(optAt?'@':'')+u.name).join(' ')+' 報告なし');
             return lines;
+        }
+
+        // ★ 追加: 今月の2日前以降のデータだけをテキストから抽出
+        function trimOldData(input) {
+            const now = new Date();
+            const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+            const cutoff = new Date(monthStart);
+            cutoff.setDate(cutoff.getDate() - 2);
+            const cutoffStr = cutoff.getFullYear() + '.' + String(cutoff.getMonth()+1).padStart(2,'0') + '.' + String(cutoff.getDate()).padStart(2,'0');
+            
+            const lines = input.split('\n');
+            const filtered = [];
+            let keep = false;
+            for (const line of lines) {
+                if (/^\d{4}[.\/\-]\d{1,2}[.\/\-]\d{1,2}/.test(line)) {
+                    const d = parseDateStr(line);
+                    if (d) {
+                        const lineDate = new Date(d.year, d.month-1, d.day);
+                        keep = lineDate >= cutoff;
+                    }
+                }
+                if (keep) {
+                    filtered.push(line);
+                }
+            }
+            return filtered.join('\n');
         }
 
         function renderChart(monthlyTotals) {
@@ -418,9 +439,15 @@
         }
 
         function generateRanking() {
-            const input=document.getElementById('chatInput').value.trim(), em=document.getElementById('errorMsg'), ra=document.getElementById('resultArea'), fi=document.getElementById('filterInfo');
+            let input=document.getElementById('chatInput').value.trim(), em=document.getElementById('errorMsg'), ra=document.getElementById('resultArea'), fi=document.getElementById('filterInfo');
             em.textContent=''; em.style.color='#e53e3e';
             if(!input) { em.textContent='チャット履歴を入力またはファイルを読み込んでください。'; ra.textContent='ここにランキングが表示されます'; fi.textContent=''; return; }
+
+            // ★ 今月の2日前より古いデータを削除
+            input = trimOldData(input);
+            document.getElementById('chatInput').value = input; // テキストエリアも更新
+            updateCharCount();
+
             const sd=document.getElementById('startDate').value, st=document.getElementById('startTime').value, ed=document.getElementById('endDate').value, et=document.getElementById('endTime').value;
             if(!sd||!ed) { em.textContent='開始日と終了日を設定してください。'; return; }
             const sdt=getDateTime(sd,st), edt=getDateTime(ed,et);
