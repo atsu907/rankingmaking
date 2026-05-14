@@ -52,11 +52,11 @@
 
         .chart-section { margin-top: 16px; }
         .chart-title { font-weight: 600; color: #2d3748; font-size: 0.85em; margin-bottom: 8px; }
-        .chart-container { display: flex; flex-direction: column; gap:5px; padding: 12px 8px; background: #fff; }
+        .chart-container { display: flex; flex-direction: column; gap: 10px; padding: 12px 8px; background: #fff; }
         .chart-entry { display: flex; flex-direction: column; gap: 2px; }
         .chart-name { font-size: 0.7em; color: #2d3748; line-height: 1.2; }
         .chart-bar-row { display: flex; align-items: center; gap: 8px; }
-        .chart-bar-bg { flex: 1; background: #e2e8f0; height: 10px; border-radius: 4px; overflow: hidden; }
+        .chart-bar-bg { flex: 1; background: #e2e8f0; height: 20px; border-radius: 4px; overflow: hidden; }
         .chart-bar { height: 100%; background: #5a67d8; border-radius: 4px; width: 0%; transition: width 0.3s; }
         .chart-time { font-size: 0.7em; color: #718096; width: 40px; text-align: right; white-space: nowrap; }
     </style>
@@ -142,7 +142,7 @@
             const yyyy = now.getFullYear();
             const mm = String(now.getMonth()+1).padStart(2,'0');
             const dd = String(now.getDate()).padStart(2,'0');
-            if (hour < 9) {
+            if (hour < 6) {
                 const yesterday = new Date(now);
                 yesterday.setDate(yesterday.getDate() - 1);
                 startDate = yesterday.getFullYear()+'-'+String(yesterday.getMonth()+1).padStart(2,'0')+'-'+String(yesterday.getDate()).padStart(2,'0');
@@ -206,32 +206,39 @@
             return null;
         }
 
+        // ★ 修正: 目印の後ろに時間がなくても、学校あり／受験生を拾えるように
         function extractFromMarker(text, markers) {
             let normalized = text.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0)-0xFEE0));
             if(markers.length===0) return {minutes: parseTimeToMinutes(normalized), school: false, exam: false};
 
-            const allMatches = [];
+            // 最後に出現する目印以降のテキストを取得
+            let lastPos = -1;
+            let lastMarker = '';
             for(const marker of markers) {
                 const escaped = marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
                 const regex = new RegExp(escaped, 'g');
                 let match;
                 while((match = regex.exec(normalized)) !== null) {
-                    allMatches.push({ index: match.index, marker: marker });
+                    if(match.index > lastPos) {
+                        lastPos = match.index;
+                        lastMarker = marker;
+                    }
                 }
             }
-            allMatches.sort((a, b) => b.index - a.index);
 
-            for(const match of allMatches) {
-                const afterText = normalized.substring(match.index + match.marker.length).trim();
-                if(!afterText) continue;
-                const minutes = parseTimeToMinutes(afterText);
-                if(minutes !== null) {
-                    const school = /(?:學校|登校)\s*(?:あり|アリ|有り)/.test(afterText) || /🏫\s*(?:アリ|あり)/.test(afterText);
-                    const exam = /受験生/.test(afterText);
-                    return {minutes, school, exam};
-                }
-            }
-            return {minutes: null, school: false, exam: false};
+            if(lastPos === -1) return {minutes: null, school: false, exam: false};
+
+            // 最後の目印以降を対象とする
+            const relevantText = normalized.substring(lastPos + lastMarker.length).trim();
+            
+            // 時間を抽出
+            const minutes = parseTimeToMinutes(relevantText);
+            
+            // 学校あり／受験生の判定は、テキスト全体から最終出現以降を対象に行う
+            const school = /(?:学校|登校)\s*(?:あり|アリ|有り)/.test(relevantText) || /🏫\s*(?:アリ|あり)/.test(relevantText);
+            const exam = /受験生/.test(relevantText);
+
+            return {minutes, school, exam};
         }
 
         function parseChat(input) {
@@ -325,7 +332,6 @@
             return lines;
         }
 
-        // ★ 追加: 今月の2日前以降のデータだけをテキストから抽出
         function trimOldData(input) {
             const now = new Date();
             const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -443,9 +449,9 @@
             em.textContent=''; em.style.color='#e53e3e';
             if(!input) { em.textContent='チャット履歴を入力またはファイルを読み込んでください。'; ra.textContent='ここにランキングが表示されます'; fi.textContent=''; return; }
 
-            // ★ 今月の2日前より古いデータを削除
+            // 今月の2日前より古いデータを削除
             input = trimOldData(input);
-            document.getElementById('chatInput').value = input; // テキストエリアも更新
+            document.getElementById('chatInput').value = input;
             updateCharCount();
 
             const sd=document.getElementById('startDate').value, st=document.getElementById('startTime').value, ed=document.getElementById('endDate').value, et=document.getElementById('endTime').value;
