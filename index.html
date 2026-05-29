@@ -206,12 +206,10 @@
             return null;
         }
 
-        // ★ 修正: 目印の後ろに時間がなくても、学校あり／受験生を拾えるように
         function extractFromMarker(text, markers) {
             let normalized = text.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0)-0xFEE0));
             if(markers.length===0) return {minutes: parseTimeToMinutes(normalized), school: false, exam: false};
 
-            // 最後に出現する目印以降のテキストを取得
             let lastPos = -1;
             let lastMarker = '';
             for(const marker of markers) {
@@ -228,13 +226,8 @@
 
             if(lastPos === -1) return {minutes: null, school: false, exam: false};
 
-            // 最後の目印以降を対象とする
             const relevantText = normalized.substring(lastPos + lastMarker.length).trim();
-            
-            // 時間を抽出
             const minutes = parseTimeToMinutes(relevantText);
-            
-            // 学校あり／受験生の判定は、テキスト全体から最終出現以降を対象に行う
             const school = /(?:学校|登校)\s*(?:あり|アリ|有り)/.test(relevantText) || /🏫\s*(?:アリ|あり)/.test(relevantText);
             const exam = /受験生/.test(relevantText);
 
@@ -337,8 +330,6 @@
             const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
             const cutoff = new Date(monthStart);
             cutoff.setDate(cutoff.getDate() - 2);
-            const cutoffStr = cutoff.getFullYear() + '.' + String(cutoff.getMonth()+1).padStart(2,'0') + '.' + String(cutoff.getDate()).padStart(2,'0');
-            
             const lines = input.split('\n');
             const filtered = [];
             let keep = false;
@@ -449,7 +440,6 @@
             em.textContent=''; em.style.color='#e53e3e';
             if(!input) { em.textContent='チャット履歴を入力またはファイルを読み込んでください。'; ra.textContent='ここにランキングが表示されます'; fi.textContent=''; return; }
 
-            // 今月の2日前より古いデータを削除
             input = trimOldData(input);
             document.getElementById('chatInput').value = input;
             updateCharCount();
@@ -466,10 +456,27 @@
             if(msgs.length===0) { em.textContent='指定期間内のデータが見つかりませんでした。（全体'+bc+'件中0件）'; ra.textContent='ここにランキングが表示されます'; fi.textContent=''; return; }
             const fd=d=>{ const mm=String(d.getMonth()+1).padStart(2,'0'),dd=String(d.getDate()).padStart(2,'0'),hh=String(d.getHours()).padStart(2,'0'),min=String(d.getMinutes()).padStart(2,'0'); return mm+'/'+dd+' '+hh+':'+min; };
             let it=fd(sdt)+' 〜 '+fd(edt)+' ('+ac+'件)'; if(markers.length>0) it+=' 目印: '+markers.join(' '); fi.textContent=it;
+
+            // 今日の報告者
             const um={};
             for(const msg of msgs) { if(!um[msg.name]) um[msg.name]=[]; um[msg.name].push(msg); }
+
+            // 今月の全報告者（グラフ用）
+            const monthStart = new Date(sdt.getFullYear(), sdt.getMonth(), 1);
+            const allMonthlyNames = new Set();
+            for(const msg of all) {
+                if(!msg.date) continue;
+                const p = msg.date.split('/');
+                const d = new Date(parseInt(p[0]), parseInt(p[1])-1, parseInt(p[2]));
+                if(d >= monthStart && d <= edt) {
+                    allMonthlyNames.add(msg.name);
+                }
+            }
+
             const optAt=document.getElementById('optAt').checked, optHmin=document.getElementById('optHmin').checked, optShowNoReport=document.getElementById('optShowNoReport').checked;
             const allU=[], schoolU=[], examU=[], monthlyTotals={};
+
+            // 今日の報告者を処理
             for(const [name,ms] of Object.entries(um)) {
                 const ct=ms.map(m=>m.text).join(' ');
                 const result = extractFromMarker(ct, markers);
@@ -479,6 +486,14 @@
                 if(result.school) schoolU.push({name,minutes:result.minutes});
                 if(result.exam) examU.push({name,minutes:result.minutes});
             }
+
+            // 今日報告していないが今月報告した人も monthlyTotals に追加
+            for(const name of allMonthlyNames) {
+                if(monthlyTotals[name] === undefined) {
+                    monthlyTotals[name] = getMonthlyTotalMinutes(all, markers, name, todayStr);
+                }
+            }
+
             let rl=[...buildRankingLines(allU,optAt,optHmin,'勉強時間総合ランキング',monthlyTotals,true)];
             if(schoolU.length>0) { rl.push(''); rl=rl.concat(buildRankingLines(schoolU,optAt,optHmin,'学校ありランキング',monthlyTotals,false)); }
             if(examU.length>0) { rl.push(''); rl=rl.concat(buildRankingLines(examU,optAt,optHmin,'受験生ランキング',monthlyTotals,false)); }
