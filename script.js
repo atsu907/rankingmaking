@@ -58,7 +58,15 @@ function parseAllLogs(rawText) {
 
       // 名前は前の行（時刻付き）
       const nameLine = lines[i - 1] || "";
-      const name = nameLine.replace(/^\d{1,2}:\d{2}\s*/, "").trim();
+
+      // 時刻削除
+      let namePart = nameLine.replace(/^\d{1,2}:\d{2}\s*/, "").trim();
+
+      // 最初のスペースまでを名前とする
+      let name = namePart.split(/\s+/)[0];
+
+      // 名前に「時間」「分」が入っていたら無効（通知文など）
+      if (/時間|分/.test(name)) continue;
 
       // ブロック（次の3行をまとめて解析）
       const block = [
