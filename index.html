@@ -1,518 +1,286 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>勉強時間ランキング作成</title>
-    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f4f8; min-height: 100vh; padding: 12px; -webkit-text-size-adjust: 100%; }
-        .container { max-width: 100%; margin: 0 auto; }
-        h1 { text-align: center; color: #2d3748; margin-bottom: 4px; font-size: 1.2em; }
-        .subtitle { text-align: center; color: #718096; font-size: 0.75em; margin-bottom: 12px; }
-        .section { background: #fff; border-radius: 12px; padding: 14px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
-        label { display: block; font-weight: 600; color: #2d3748; margin-bottom: 4px; font-size: 0.85em; }
-        textarea { width: 100%; height: 200px; border: 2px solid #e2e8f0; border-radius: 8px; padding: 10px; font-size: 0.8em; font-family: 'SF Mono', 'Menlo', 'Monaco', monospace; resize: vertical; transition: border 0.2s; -webkit-appearance: none; }
-        textarea:focus { outline: none; border-color: #5a67d8; }
-        .file-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; }
-        .file-btn { width: auto; padding: 10px 16px; background: #edf2f7; color: #2d3748; border: 2px dashed #cbd5e0; border-radius: 8px; font-size: 0.8em; font-weight: 600; cursor: pointer; white-space: nowrap; -webkit-tap-highlight-color: transparent; }
-        .file-btn:active { background: #e2e8f0; }
-        .file-name { font-size: 0.75em; color: #718096; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .marker-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
-        .marker-row input[type="text"] { padding: 8px 10px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.85em; width: 100%; max-width: 300px; -webkit-appearance: none; background: #fff; }
-        .marker-row input[type="text"]:focus { outline: none; border-color: #5a67d8; }
-        .marker-row span { font-size: 0.75em; color: #718096; white-space: nowrap; }
-        .marker-saved { font-size: 0.7em; color: #48bb78; display: none; white-space: nowrap; }
-        .marker-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
-        .marker-tag { display: inline-block; background: #ebf4ff; color: #5a67d8; padding: 4px 10px; border-radius: 14px; font-size: 0.75em; border: 1px solid #c3dafe; }
-        .marker-hint { font-size: 0.65em; color: #a0aec0; margin-top: 4px; }
-        .date-select { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
-        .date-select .date-group { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
-        .date-select input[type="date"] { padding: 8px 10px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.8em; -webkit-appearance: none; background: #fff; width: 130px; min-width: 130px; }
-        .date-select input[type="date"]:focus { outline: none; border-color: #5a67d8; }
-        .date-select input[type="time"] { padding: 8px 10px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.8em; -webkit-appearance: none; background: #fff; width: 100px; min-width: 100px; }
-        .date-select input[type="time"]:focus { outline: none; border-color: #5a67d8; }
-        .date-select .date-label { font-size: 0.75em; color: #718096; white-space: nowrap; }
-        .filter-info { font-size: 0.7em; color: #5a67d8; margin-top: 4px; }
-        .options { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
-        .options label { display: flex; align-items: center; gap: 4px; font-weight: 400; cursor: pointer; font-size: 0.8em; background: #f7fafc; padding: 6px 10px; border-radius: 20px; border: 1px solid #e2e8f0; }
-        .options label:has(input:checked) { background: #ebf4ff; border-color: #5a67d8; }
-        .options input[type="checkbox"] { width: 16px; height: 16px; accent-color: #5a67d8; }
-        button { width: 100%; padding: 14px; background: #5a67d8; color: #fff; border: none; border-radius: 10px; font-size: 1em; font-weight: 600; cursor: pointer; transition: background 0.2s; margin-top: 10px; -webkit-appearance: none; -webkit-tap-highlight-color: transparent; }
-        button:active { background: #4c51bf; transform: scale(0.98); }
-        .result-area { background: #1a202c; color: #e2e8f0; border-radius: 8px; padding: 14px; font-family: 'SF Mono', 'Menlo', 'Monaco', monospace; font-size: 0.8em; white-space: pre-wrap; word-break: break-all; min-height: 50px; line-height: 1.5; }
-        .result-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-        .result-header label { margin-bottom: 0; }
-        .copy-btn, .save-chart-btn { background: #4a5568; color: #fff; border: none; border-radius: 6px; padding: 6px 14px; font-size: 0.75em; cursor: pointer; width: auto; -webkit-tap-highlight-color: transparent; }
-        .copy-btn:active, .save-chart-btn:active { background: #5a67d8; }
-        .save-chart-btn { margin-top: 8px; display: none; }
-        .error { color: #e53e3e; font-size: 0.75em; margin-top: 4px; }
-        .count-info { text-align: right; color: #a0aec0; font-size: 0.7em; margin-top: 2px; }
-
-        .chart-section { margin-top: 16px; }
-        .chart-title { font-weight: 600; color: #2d3748; font-size: 0.85em; margin-bottom: 8px; }
-        .chart-container { display: flex; flex-direction: column; gap: 10px; padding: 12px 8px; background: #fff; }
-        .chart-entry { display: flex; flex-direction: column; gap: 2px; }
-        .chart-name { font-size: 0.7em; color: #2d3748; line-height: 1.2; }
-        .chart-bar-row { display: flex; align-items: center; gap: 8px; }
-        .chart-bar-bg { flex: 1; background: #e2e8f0; height: 20px; border-radius: 4px; overflow: hidden; }
-        .chart-bar { height: 100%; background: #5a67d8; border-radius: 4px; width: 0%; transition: width 0.3s; }
-        .chart-time { font-size: 0.7em; color: #718096; width: 40px; text-align: right; white-space: nowrap; }
-    </style>
+  <meta charset="UTF-8">
+  <title>勉強時間ランキング作成</title>
+  <style>
+    body { font-family: system-ui, sans-serif; padding: 16px; }
+    textarea { width: 100%; box-sizing: border-box; }
+    input, button { font-size: 14px; }
+    button { padding: 6px 12px; margin-top: 8px; }
+    pre {
+      font-size: 16px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      background: #f7f7f7;
+      padding: 12px;
+      border-radius: 6px;
+    }
+    #copyMsg {
+      color: green;
+      font-size: 14px;
+      margin-left: 8px;
+      display: none;
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h1>勉強時間ランキング作成</h1>
-        <p class="subtitle">LINEのチャット履歴からランキングを自動生成</p>
-        <div class="section">
-            <label for="chatInput">チャット履歴</label>
-            <div class="file-row">
-                <label class="file-btn" for="fileInput">ファイルを開く</label>
-                <input type="file" id="fileInput" accept=".txt" style="display:none" onchange="loadFile()">
-                <span class="file-name" id="fileName">未選択</span>
-            </div>
-            <div class="marker-row">
-                <span>時間の目印:</span>
-                <input type="text" id="markerInput" placeholder="例: 勉強時間報告" maxlength="200" value="勉強時間報告 勉強結果報告">
-                <span class="marker-saved" id="markerSaved">保存済</span>
-            </div>
-            <div class="marker-tags" id="markerTags"></div>
-            <p class="marker-hint">スペース・カンマ・改行で区切って複数指定可。目印の直後に時間がない場合は報告なし扱いです</p>
-            <textarea id="chatInput" placeholder="ここにチャット履歴を貼り付けるか、ファイルを開いてください"></textarea>
-            <p class="count-info" id="charCount">0文字</p>
-            <div class="date-select">
-                <span class="date-group"><span class="date-label">開始:</span><input type="date" id="startDate"><input type="time" id="startTime" value="12:00"></span>
-                <span class="date-group"><span class="date-label">終了:</span><input type="date" id="endDate"><input type="time" id="endTime" value="23:59"></span>
-            </div>
-            <p class="filter-info" id="filterInfo"></p>
-            <div class="options">
-                <label><input type="checkbox" id="optAt" checked> @をつける</label>
-                <label><input type="checkbox" id="optHmin"> h/min表記</label>
-                <label><input type="checkbox" id="optShowNoReport"> 報告なし表示</label>
-            </div>
-            <button onclick="generateRanking()">ランキングを作成</button>
-        </div>
-        <div class="section">
-            <div class="result-header"><label>生成結果</label><button class="copy-btn" onclick="copyResult()">コピー</button></div>
-            <div class="result-area" id="resultArea">ここにランキングが表示されます</div>
-            <p class="error" id="errorMsg"></p>
-            <div class="chart-section" id="chartSection">
-                <div class="chart-title">月別合計時間</div>
-                <div class="chart-container" id="chartContainer"></div>
-                <button class="save-chart-btn" id="saveChartBtn" onclick="saveChartAsImage()">グラフを画像で保存</button>
-            </div>
-        </div>
-    </div>
-    <script>
-        const STORAGE_KEY = 'study_markers_v2';
-        const DEFAULT_MARKERS = '勉強時間報告 勉強結果報告';
-        const IGNORE_KEYWORD = '【今後の勉強時間ランキングの報告方法】|再掲';
+  <h1>勉強時間ランキング作成</h1>
 
-        function getMarkers() {
-            const raw = document.getElementById('markerInput').value.trim();
-            if (!raw) return [];
-            return [...new Set(raw.split(/[\s　,，、\n\r]+/).filter(s => s.length > 0))];
-        }
-        function updateMarkerTags() {
-            const markers = getMarkers();
-            const el = document.getElementById('markerTags');
-            el.innerHTML = markers.length === 0 ? '' : markers.map(m => '<span class="marker-tag">' + m.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</span>').join('');
-        }
-        function loadMarkers() {
-            const saved = localStorage.getItem(STORAGE_KEY);
-            if (saved !== null) document.getElementById('markerInput').value = saved;
-            updateMarkerTags();
-        }
-        function saveMarkers() {
-            const raw = document.getElementById('markerInput').value.trim();
-            raw ? localStorage.setItem(STORAGE_KEY, raw) : localStorage.removeItem(STORAGE_KEY);
-            updateMarkerTags();
-            const el = document.getElementById('markerSaved'); el.style.display = 'inline';
-            if(raw){ el.textContent='保存済'; el.style.color='#48bb78'; } else { el.textContent='解除済'; el.style.color='#a0aec0'; }
-            setTimeout(()=>{ el.style.display='none'; }, 2000);
-        }
-        document.getElementById('markerInput').addEventListener('input', saveMarkers);
-        loadMarkers();
+  <p>
+    <label>対象日：
+      <input type="date" id="targetDate">
+    </label>
+  </p>
 
-        function setToday() {
-            const now = new Date();
-            const hour = now.getHours();
-            let startDate, endDate;
-            const yyyy = now.getFullYear();
-            const mm = String(now.getMonth()+1).padStart(2,'0');
-            const dd = String(now.getDate()).padStart(2,'0');
-            if (hour < 6) {
-                const yesterday = new Date(now);
-                yesterday.setDate(yesterday.getDate() - 1);
-                startDate = yesterday.getFullYear()+'-'+String(yesterday.getMonth()+1).padStart(2,'0')+'-'+String(yesterday.getDate()).padStart(2,'0');
-            } else {
-                startDate = yyyy+'-'+mm+'-'+dd;
+  <p><strong>① テキキストファイルを読み込む：</strong></p>
+  <input type="file" id="fileInput" accept=".txt">
+  <br><br>
+
+  <p><strong>② または直接コピペ：</strong></p>
+  <textarea id="logInput" rows="14" placeholder="ここにLINEログを貼り付けてもOK"></textarea>
+
+  <p>
+    <button id="calcBtn">ランキング作成</button>
+  </p>
+
+  <h2>結果</h2>
+
+  <button id="copyBtn">コピー</button>
+  <span id="copyMsg">コピーしました！</span>
+
+  <pre id="resultText"></pre>
+
+  <script>
+    // ファイル読み込み
+    document.getElementById('fileInput').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(event) {
+        document.getElementById('logInput').value = event.target.result;
+      };
+      reader.readAsText(file, 'UTF-8');
+    });
+
+    // ログ解析（全期間）
+    function parseAllLogs(rawText) {
+      const lines = rawText.split('\n').map(l => l.trim());
+
+      let currentLogDate = null;
+      const allReports = [];
+
+      const dateLineRegex = /^(\d{4})\.(\d{2})\.(\d{2})/;
+      const timeRegex = /(\d+)\s*時間(?:\s*(\d+)\s*分)?/;
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+
+        // 日付行
+        const d = line.match(dateLineRegex);
+        if (d) {
+          const y = d[1], m = d[2], day = d[3];
+          currentLogDate = `${y}-${m}-${day}`;
+          continue;
+        }
+        if (!currentLogDate) continue;
+
+        // 勉強時間報告
+        const m = line.match(/^(\d{1,2}):(\d{2})\s+(.+?)\s+勉強時間報告/);
+        if (!m) continue;
+
+        const hour = Number(m[1]);
+        const minute = Number(m[2]);
+        const name = m[3].trim();
+
+        let msgDate = new Date(`${currentLogDate}T00:00:00`);
+        msgDate.setHours(hour, minute, 0, 0);
+
+        const hasSchool = line.includes("学校あり");
+        const hasExam = line.includes("受験生");
+
+        const timeMatch = line.match(timeRegex);
+        if (timeMatch) {
+          const h = Number(timeMatch[1]);
+          const m2 = timeMatch[2] ? Number(timeMatch[2]) : 0;
+          const total = h * 60 + m2;
+
+          allReports.push({
+            name,
+            minutes: total,
+            date: msgDate,
+            school: hasSchool,
+            exam: hasExam
+          });
+        } else {
+          if (i + 1 < lines.length) {
+            const nextLine = lines[i + 1];
+            const t = nextLine.match(timeRegex);
+            if (t) {
+              const h = Number(t[1]);
+              const m2 = t[2] ? Number(t[2]) : 0;
+              const total = h * 60 + m2;
+
+              allReports.push({
+                name,
+                minutes: total,
+                date: msgDate,
+                school: hasSchool,
+                exam: hasExam
+              });
+              i++;
             }
-            endDate = yyyy+'-'+mm+'-'+dd;
-            document.getElementById('startDate').value = startDate;
-            document.getElementById('endDate').value = endDate;
+          }
         }
-        setToday();
+      }
 
-        function loadFile() {
-            const f = document.getElementById('fileInput').files[0];
-            if(!f) return;
-            document.getElementById('fileName').textContent = f.name;
-            const m = f.name.match(/(\d{4})[-_.]?(\d{2})[-_.]?(\d{2})/);
-            if(m){ const d=m[1]+'-'+m[2]+'-'+m[3]; document.getElementById('startDate').value=d; document.getElementById('endDate').value=d; }
-            const r = new FileReader();
-            r.onload = function(e){ document.getElementById('chatInput').value=e.target.result; updateCharCount(); };
-            r.readAsText(f, 'UTF-8');
+      return allReports;
+    }
+
+    // 指定日の日次範囲
+    function getDailyRange(targetDateStr) {
+      const start = new Date(`${targetDateStr}T12:00:00`);
+      const end = new Date(start);
+      end.setDate(end.getDate() + 1);
+      end.setHours(6, 0, 0, 0);
+      return { start, end };
+    }
+
+    // 月初〜当日までの全日次期間
+    function getMonthlyRanges(targetDateStr) {
+      const target = new Date(`${targetDateStr}T00:00:00`);
+      const year = target.getFullYear();
+      const month = target.getMonth();
+
+      const ranges = [];
+
+      for (let day = 1; day <= target.getDate(); day++) {
+        const d = new Date(year, month, day);
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, "0");
+        const dd = String(d.getDate()).padStart(2, "0");
+
+        ranges.push(getDailyRange(`${yyyy}-${mm}-${dd}`));
+      }
+
+      return ranges;
+    }
+
+    // ボタン押下
+    document.getElementById('calcBtn').addEventListener('click', () => {
+      const raw = document.getElementById('logInput').value;
+      const targetDateStr = document.getElementById('targetDate').value;
+
+      if (!raw.trim()) {
+        alert('ログを入力するか、ファイルを読み込んでください');
+        return;
+      }
+      if (!targetDateStr) {
+        alert('対象日を選択してください');
+        return;
+      }
+
+      const allReports = parseAllLogs(raw);
+
+      // 当日の日次範囲
+      const { start, end } = getDailyRange(targetDateStr);
+
+      // 当日報告（最新のみ）
+      const latestToday = {};
+      allReports.forEach(r => {
+        if (r.date >= start && r.date <= end) {
+          latestToday[r.name] = r;
         }
-        function updateCharCount() { document.getElementById('charCount').textContent = document.getElementById('chatInput').value.length + '文字'; }
-        document.getElementById('chatInput').addEventListener('input', updateCharCount);
+      });
 
-        function isIgnoredMessage(text) {
-            const patterns = IGNORE_KEYWORD.split('|');
-            return patterns.some(p => text.includes(p));
+      const todayEntries = Object.values(latestToday).sort((a, b) => b.minutes - a.minutes);
+
+      // 月次範囲
+      const monthlyRanges = getMonthlyRanges(targetDateStr);
+
+      // 月次合計（1日1回だけ）
+      const monthlyTotals = {};
+
+      monthlyRanges.forEach(range => {
+        const daily = {};
+
+        // その日の報告を全部集める
+        allReports.forEach(r => {
+          if (r.date >= range.start && r.date <= range.end) {
+            daily[r.name] = r; // 上書きで最新だけ残る
+          }
+        });
+
+        // 当日報告していない人は除外
+        for (const name in daily) {
+          if (!latestToday[name]) continue;
+
+          monthlyTotals[name] = (monthlyTotals[name] || 0) + daily[name].minutes;
         }
-        function isDateLine(line) { return /^\d{4}[.\/\-]\d{1,2}[.\/\-]\d{1,2}/.test(line); }
-        function parseDateStr(str) {
-            const m = str.match(/(\d{4})[.\/\-](\d{1,2})[.\/\-](\d{1,2})/);
-            if(m) return {year:parseInt(m[1]),month:parseInt(m[2]),day:parseInt(m[3])};
-            return null;
-        }
+      });
 
-        function parseTimeToMinutes(str) {
-            str = str.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0)-0xFEE0));
-            const K = {一:1,二:2,三:3,四:4,五:5,六:6,七:7,八:8,九:9,十:10,百:100};
-            let m = str.match(/([一二三四五六七八九十百]+)時間([一二三四五六七八九十]+)分/);
-            if(m) {
-                let h=0, min=0;
-                const hs=m[1], ms=m[2];
-                if(hs==='十') h=10; else if(hs.length===2&&hs[0]==='十') h=10+(K[hs[1]]||0); else h=K[hs]||0;
-                if(ms==='十') min=10; else if(ms.length===2&&ms[0]==='十') min=10+(K[ms[1]]||0); else min=K[ms]||0;
-                return h*60+min;
-            }
-            m=str.match(/([一二三四五六七八九十百]+)時間/);
-            if(m){ const hs=m[1]; let h=0; if(hs==='十') h=10; else if(hs.length===2&&hs[0]==='十') h=10+(K[hs[1]]||0); else h=K[hs]||0; return h*60; }
-            m=str.match(/([一二三四五六七八九十]+)分/);
-            if(m){ const ms=m[1]; let min=0; if(ms==='十') min=10; else if(ms.length===2&&ms[0]==='十') min=10+(K[ms[1]]||0); else min=K[ms]||0; return min; }
-            let t=0;
-            for(const p of [/(\d+)\s*時間\s*(\d+)\s*分/, /(\d+)\s*h\s*(\d+)\s*min/i, /(\d+)\s*h\s*(\d+)\s*m\b/i]) { const x=str.match(p); if(x&&x[1]&&x[2]) return parseInt(x[1])*60+parseInt(x[2]); }
-            const hf=str.match(/(\d+)\s*時間半/); if(hf) return parseInt(hf[1])*60+30;
-            const hm=str.match(/(\d+)\s*時間|\s(\d+)\s*h\b|\b(\d+)\s*h\b/i);
-            if(hm) { const h = parseInt(hm[1]||hm[2]||hm[3]); if(h) t+=h*60; }
-            const mm=str.match(/(\d+)\s*分|\s(\d+)\s*min\b|\b(\d+)\s*min\b|\s(\d+)\s*m\b|\b(\d+)\s*m\b/i);
-            if(mm) { const min = parseInt(mm[1]||mm[2]||mm[3]||mm[4]||mm[5]); if(min) t+=min; }
-            if(t>0) return t;
-            const dh=str.match(/(\d+\.?\d*)\s*h\b/i); if(dh) return Math.round(parseFloat(dh[1])*60);
-            return null;
-        }
+      // 日付フォーマット（6/24）
+      const d = new Date(targetDateStr);
+      const dateLabel = `${d.getMonth() + 1}/${d.getDate()}`;
 
-        function extractFromMarker(text, markers) {
-            let normalized = text.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0)-0xFEE0));
-            if(markers.length===0) return {minutes: parseTimeToMinutes(normalized), school: false, exam: false};
+      // 表示テキスト
+      let text = "";
 
-            let lastPos = -1;
-            let lastMarker = '';
-            for(const marker of markers) {
-                const escaped = marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                const regex = new RegExp(escaped, 'g');
-                let match;
-                while((match = regex.exec(normalized)) !== null) {
-                    if(match.index > lastPos) {
-                        lastPos = match.index;
-                        lastMarker = marker;
-                    }
-                }
-            }
+      // 総合ランキング（必ず表示）
+      text += `総合ランキング ${dateLabel}\n`;
+      todayEntries.forEach((r, i) => {
+        const h = Math.floor(r.minutes / 60);
+        const m = r.minutes % 60;
+        const monthH = Math.floor((monthlyTotals[r.name] || 0) / 60);
 
-            if(lastPos === -1) return {minutes: null, school: false, exam: false};
+        text += `${i + 1}位 ${r.name}：${h}時間${m}分\n`;
+        text += `今月合計 ${monthH}h\n`;
+      });
 
-            const relevantText = normalized.substring(lastPos + lastMarker.length).trim();
-            const minutes = parseTimeToMinutes(relevantText);
-            const school = /(?:学校|登校)\s*(?:あり|アリ|有り)/.test(relevantText) || /🏫\s*(?:アリ|あり)/.test(relevantText);
-            const exam = /受験生/.test(relevantText);
+      text += "\n";
 
-            return {minutes, school, exam};
-        }
+      // 学校あり
+      const school = todayEntries.filter(r => r.school);
+      if (school.length > 0) {
+        text += "学校ありランキング\n";
+        school.forEach((r, i) => {
+          const h = Math.floor(r.minutes / 60);
+          const m = r.minutes % 60;
+          const monthH = Math.floor((monthlyTotals[r.name] || 0) / 60);
 
-        function parseChat(input) {
-            const lines = input.split('\n'), messages = [];
-            let currentDate = null;
-            const timeLinePattern = /^(\d{1,2}:\d{2})\s+(.+?)\s+(.*)$/;
-            for(let i=0; i<lines.length; i++) {
-                const line = lines[i].trim();
-                if(!line) continue;
-                const timeMatch = line.match(timeLinePattern);
-                if(!timeMatch && isDateLine(line)) {
-                    const parsed = parseDateStr(line);
-                    if(parsed) currentDate = parsed.year+'/'+String(parsed.month).padStart(2,'0')+'/'+String(parsed.day).padStart(2,'0');
-                    continue;
-                }
-                if(timeMatch) {
-                    const msg = {time:timeMatch[1],name:timeMatch[2].trim(),text:timeMatch[3].trim(),date:currentDate,ignored:false};
-                    if(isIgnoredMessage(msg.text)) msg.ignored = true;
-                    messages.push(msg);
-                } else if(messages.length>0) {
-                    const last = messages[messages.length-1];
-                    if(isIgnoredMessage(line)) last.ignored = true;
-                    last.text += ' ' + line;
-                }
-            }
-            return messages.filter(msg => !msg.ignored);
-        }
+          text += `${i + 1}位 ${r.name}：${h}時間${m}分\n`;
+          text += `今月合計 ${monthH}h\n`;
+        });
+        text += "\n";
+      }
 
-        function getDateTime(ds, ts) {
-            const [y,m,d]=ds.split('-').map(Number), [h,min]=ts.split(':').map(Number);
-            return new Date(y,m-1,d,h,min,0);
-        }
-        function filterByRange(msgs, s, e) {
-            return msgs.filter(msg => {
-                if(msg.date) {
-                    const p=msg.date.split('/'), [h,m]=msg.time.split(':').map(Number);
-                    const dt=new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2]),h,m,0);
-                    return dt>=s&&dt<=e;
-                }
-                if(s.toDateString()===e.toDateString()) {
-                    const [h,m]=msg.time.split(':').map(Number), mm=h*60+m;
-                    const sm=s.getHours()*60+s.getMinutes(), em=e.getHours()*60+e.getMinutes();
-                    return mm>=sm&&mm<=em;
-                }
-                return false;
-            });
-        }
-        function formatTime(min, opt) {
-            if(opt) { const h=Math.floor(min/60), m=min%60; return h+'h'+m+'min'; }
-            else { const h=Math.floor(min/60), m=min%60; if(h>0&&m>0) return h+'時間'+m+'分'; else if(h>0) return h+'時間'; else return m+'分'; }
-        }
+      // 受験生
+      const exam = todayEntries.filter(r => r.exam);
+      if (exam.length > 0) {
+        text += "受験生ランキング\n";
+        exam.forEach((r, i) => {
+          const h = Math.floor(r.minutes / 60);
+          const m = r.minutes % 60;
+          const monthH = Math.floor((monthlyTotals[r.name] || 0) / 60);
 
-        function getMonthlyTotalMinutes(allMessages, markers, name, todayStr) {
-            const today = new Date(todayStr);
-            const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-            const dailyTimes = {};
-            for(const msg of allMessages) {
-                if(msg.name !== name || !msg.date) continue;
-                const p = msg.date.split('/');
-                const d = new Date(parseInt(p[0]), parseInt(p[1])-1, parseInt(p[2]));
-                if(d < monthStart) continue;
-                const result = extractFromMarker(msg.text, markers);
-                if(result.minutes !== null) {
-                    dailyTimes[msg.date] = result.minutes;
-                }
-            }
-            let total = 0;
-            for(const minutes of Object.values(dailyTimes)) {
-                total += minutes;
-            }
-            return total;
-        }
+          text += `${i + 1}位 ${r.name}：${h}時間${m}分\n`;
+          text += `今月合計 ${monthH}h\n`;
+        });
+      }
 
-        function buildRankingLines(users, optAt, optHmin, title, monthlyTotals, showMonthly) {
-            const w=users.filter(u=>u.minutes!==null), wo=users.filter(u=>u.minutes===null);
-            w.sort((a,b)=>b.minutes-a.minutes);
-            const lines=[title]; let rank=1;
-            for(const u of w) {
-                const p=optAt?'@':'', nd=p+u.name, td=formatTime(u.minutes,optHmin);
-                lines.push(rank+'位 '+nd+' '+td);
-                if(showMonthly) {
-                    const mt = monthlyTotals[u.name] || 0;
-                    if(mt > 0) {
-                        const hours = Math.floor(mt / 60);
-                        lines.push(' （今月合計 '+hours+'h）');
-                    }
-                }
-                rank++;
-            }
-            if(wo.length>0) lines.push('※'+wo.map(u=>(optAt?'@':'')+u.name).join(' ')+' 報告なし');
-            return lines;
-        }
+      document.getElementById('resultText').textContent = text;
+    });
 
-        function trimOldData(input) {
-            const now = new Date();
-            const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-            const cutoff = new Date(monthStart);
-            cutoff.setDate(cutoff.getDate() - 2);
-            const lines = input.split('\n');
-            const filtered = [];
-            let keep = false;
-            for (const line of lines) {
-                if (/^\d{4}[.\/\-]\d{1,2}[.\/\-]\d{1,2}/.test(line)) {
-                    const d = parseDateStr(line);
-                    if (d) {
-                        const lineDate = new Date(d.year, d.month-1, d.day);
-                        keep = lineDate >= cutoff;
-                    }
-                }
-                if (keep) {
-                    filtered.push(line);
-                }
-            }
-            return filtered.join('\n');
-        }
-
-        function renderChart(monthlyTotals) {
-            const chartSection = document.getElementById('chartSection');
-            const chartContainer = document.getElementById('chartContainer');
-            const saveBtn = document.getElementById('saveChartBtn');
-            chartContainer.innerHTML = '';
-            const entries = Object.entries(monthlyTotals)
-                .filter(([, min]) => min > 0)
-                .sort((a, b) => b[1] - a[1]);
-            if (entries.length === 0) {
-                chartSection.style.display = 'none';
-                saveBtn.style.display = 'none';
-                return;
-            }
-            const maxMin = entries[0][1];
-            const optAt = document.getElementById('optAt').checked;
-
-            for (const [name, min] of entries) {
-                const hours = Math.floor(min / 60);
-                const percent = (min / maxMin) * 100;
-                const displayName = (optAt ? '@' : '') + name;
-
-                const entry = document.createElement('div');
-                entry.className = 'chart-entry';
-
-                const nameDiv = document.createElement('div');
-                nameDiv.className = 'chart-name';
-                nameDiv.textContent = displayName;
-
-                const barRow = document.createElement('div');
-                barRow.className = 'chart-bar-row';
-
-                const barBg = document.createElement('div');
-                barBg.className = 'chart-bar-bg';
-                const bar = document.createElement('div');
-                bar.className = 'chart-bar';
-                bar.style.width = percent + '%';
-                barBg.appendChild(bar);
-
-                const timeDiv = document.createElement('div');
-                timeDiv.className = 'chart-time';
-                timeDiv.textContent = hours + 'h';
-
-                barRow.appendChild(barBg);
-                barRow.appendChild(timeDiv);
-
-                entry.appendChild(nameDiv);
-                entry.appendChild(barRow);
-                chartContainer.appendChild(entry);
-            }
-            chartSection.style.display = 'block';
-            saveBtn.style.display = 'inline-block';
-        }
-
-        function saveChartAsImage() {
-            const chartContainer = document.getElementById('chartContainer');
-            const saveBtn = document.getElementById('saveChartBtn');
-            saveBtn.textContent = '保存中...';
-            saveBtn.disabled = true;
-
-            html2canvas(chartContainer, { backgroundColor: '#ffffff', scale: 2 }).then(canvas => {
-                const padding = 30;
-                const newCanvas = document.createElement('canvas');
-                newCanvas.width = canvas.width + padding * 2;
-                newCanvas.height = canvas.height + padding * 2;
-                const ctx = newCanvas.getContext('2d');
-                ctx.fillStyle = '#ffffff';
-                ctx.fillRect(0, 0, newCanvas.width, newCanvas.height);
-                ctx.drawImage(canvas, padding, padding);
-                newCanvas.toBlob(function(blob) {
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = 'monthly_study_time.png';
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    URL.revokeObjectURL(url);
-                    saveBtn.textContent = 'グラフを画像で保存';
-                    saveBtn.disabled = false;
-                }, 'image/png');
-            }).catch(() => {
-                alert('画像の保存に失敗しました。');
-                saveBtn.textContent = 'グラフを画像で保存';
-                saveBtn.disabled = false;
-            });
-        }
-
-        function generateRanking() {
-            let input=document.getElementById('chatInput').value.trim(), em=document.getElementById('errorMsg'), ra=document.getElementById('resultArea'), fi=document.getElementById('filterInfo');
-            em.textContent=''; em.style.color='#e53e3e';
-            if(!input) { em.textContent='チャット履歴を入力またはファイルを読み込んでください。'; ra.textContent='ここにランキングが表示されます'; fi.textContent=''; return; }
-
-            input = trimOldData(input);
-            document.getElementById('chatInput').value = input;
-            updateCharCount();
-
-            const sd=document.getElementById('startDate').value, st=document.getElementById('startTime').value, ed=document.getElementById('endDate').value, et=document.getElementById('endTime').value;
-            if(!sd||!ed) { em.textContent='開始日と終了日を設定してください。'; return; }
-            const sdt=getDateTime(sd,st), edt=getDateTime(ed,et);
-            if(sdt>edt) { em.textContent='開始日時が終了日時より後になっています。'; return; }
-            const all=parseChat(input);
-            if(all.length===0) { em.textContent='"時刻 名前 本文"の形式で入力してください。'; fi.textContent=''; return; }
-            const markers=getMarkers();
-            const todayStr=sd;
-            const bc=all.length, msgs=filterByRange(all,sdt,edt), ac=msgs.length;
-            if(msgs.length===0) { em.textContent='指定期間内のデータが見つかりませんでした。（全体'+bc+'件中0件）'; ra.textContent='ここにランキングが表示されます'; fi.textContent=''; return; }
-            const fd=d=>{ const mm=String(d.getMonth()+1).padStart(2,'0'),dd=String(d.getDate()).padStart(2,'0'),hh=String(d.getHours()).padStart(2,'0'),min=String(d.getMinutes()).padStart(2,'0'); return mm+'/'+dd+' '+hh+':'+min; };
-            let it=fd(sdt)+' 〜 '+fd(edt)+' ('+ac+'件)'; if(markers.length>0) it+=' 目印: '+markers.join(' '); fi.textContent=it;
-
-            // 今日の報告者
-            const um={};
-            for(const msg of msgs) { if(!um[msg.name]) um[msg.name]=[]; um[msg.name].push(msg); }
-
-            // 今月の全報告者（グラフ用）
-            const monthStart = new Date(sdt.getFullYear(), sdt.getMonth(), 1);
-            const allMonthlyNames = new Set();
-            for(const msg of all) {
-                if(!msg.date) continue;
-                const p = msg.date.split('/');
-                const d = new Date(parseInt(p[0]), parseInt(p[1])-1, parseInt(p[2]));
-                if(d >= monthStart && d <= edt) {
-                    allMonthlyNames.add(msg.name);
-                }
-            }
-
-            const optAt=document.getElementById('optAt').checked, optHmin=document.getElementById('optHmin').checked, optShowNoReport=document.getElementById('optShowNoReport').checked;
-            const allU=[], schoolU=[], examU=[], monthlyTotals={};
-
-            // 今日の報告者を処理
-            for(const [name,ms] of Object.entries(um)) {
-                const ct=ms.map(m=>m.text).join(' ');
-                const result = extractFromMarker(ct, markers);
-                const totalMin = getMonthlyTotalMinutes(all, markers, name, todayStr);
-                monthlyTotals[name] = totalMin;
-                allU.push({name,minutes:result.minutes});
-                if(result.school) schoolU.push({name,minutes:result.minutes});
-                if(result.exam) examU.push({name,minutes:result.minutes});
-            }
-
-            // 今日報告していないが今月報告した人も monthlyTotals に追加
-            for(const name of allMonthlyNames) {
-                if(monthlyTotals[name] === undefined) {
-                    monthlyTotals[name] = getMonthlyTotalMinutes(all, markers, name, todayStr);
-                }
-            }
-
-            let rl=[...buildRankingLines(allU,optAt,optHmin,'勉強時間総合ランキング',monthlyTotals,true)];
-            if(schoolU.length>0) { rl.push(''); rl=rl.concat(buildRankingLines(schoolU,optAt,optHmin,'学校ありランキング',monthlyTotals,false)); }
-            if(examU.length>0) { rl.push(''); rl=rl.concat(buildRankingLines(examU,optAt,optHmin,'受験生ランキング',monthlyTotals,false)); }
-            if(!optShowNoReport) rl=rl.filter(l=>!l.startsWith('※'));
-            ra.textContent=rl.join('\n'); em.textContent='';
-            renderChart(monthlyTotals);
-        }
-
-        function copyResult() {
-            const ra=document.getElementById('resultArea'), t=ra.textContent;
-            if(t==='ここにランキングが表示されます') { document.getElementById('errorMsg').textContent='先にランキングを作成してください。'; document.getElementById('errorMsg').style.color='#e53e3e'; return; }
-            navigator.clipboard.writeText(t).then(()=>{
-                const btn=document.querySelector('.copy-btn'), o=btn.textContent;
-                btn.textContent='コピー完了'; btn.style.background='#48bb78';
-                setTimeout(()=>{ btn.textContent=o; btn.style.background='#4a5568'; },1500);
-            }).catch(()=>{ document.getElementById('errorMsg').textContent='コピーに失敗しました。手動でコピーしてください。'; document.getElementById('errorMsg').style.color='#e53e3e'; });
-        }
-        updateCharCount();
-        updateMarkerTags();
-    </script>
+    // コピー機能
+    document.getElementById('copyBtn').addEventListener('click', () => {
+      const text = document.getElementById('resultText').textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        const msg = document.getElementById('copyMsg');
+        msg.style.display = "inline";
+        setTimeout(() => msg.style.display = "none", 1500);
+      });
+    });
+  </script>
 </body>
 </html>
