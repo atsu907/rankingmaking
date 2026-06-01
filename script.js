@@ -106,7 +106,7 @@ function parseAllLogs(rawText) {
       // 時刻削除
       let afterTime = line.replace(/^\d{1,2}:\d{2}\s*/, "");
 
-      // 名前は「勉強時間報告」の前まで
+      // 名前は「勉強時間報告」の前まで（最初の単語）
       const beforeReport = afterTime.split("勉強時間報告")[0].trim();
       const name = beforeReport.split(" ")[0];
 
@@ -239,7 +239,7 @@ document.getElementById('calcBtn').addEventListener('click', () => {
     const monthH = Math.floor((monthlyTotals[r.name] || 0) / 60);
 
     text += `${i + 1}位 ${r.name}：${h}時間${m}分\n`;
-    text += `(${monthH}h)\n`;
+    text += `　(${monthH}h)\n`;
   });
 
   text += "\n";
@@ -254,7 +254,7 @@ document.getElementById('calcBtn').addEventListener('click', () => {
       const monthH = Math.floor((monthlyTotals[r.name] || 0) / 60);
 
       text += `${i + 1}位 ${r.name}：${h}時間${m}分\n`;
-      text += `(${monthH}h)\n`;
+      text += `　(${monthH}h)\n`;
     });
     text += "\n";
   }
@@ -269,7 +269,7 @@ document.getElementById('calcBtn').addEventListener('click', () => {
       const monthH = Math.floor((monthlyTotals[r.name] || 0) / 60);
 
       text += `${i + 1}位 ${r.name}：${h}時間${m}分\n`;
-      text += `(${monthH}h)\n`;
+      text += `　(${monthH}h)\n`;
     });
   }
 
@@ -289,4 +289,22 @@ document.getElementById('copyBtn').addEventListener('click', () => {
     msg.style.display = "inline";
     setTimeout(() => msg.style.display = "none", 1500);
   });
+});
+
+
+// ===============================
+//  ページ読み込み時に日付を「昨日」に設定
+// ===============================
+window.addEventListener("load", () => {
+  const d = new Date();
+  d.setDate(d.getDate() - 1); // 昨日にする
+
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+
+  const target = document.getElementById("targetDate");
+  if (target) {
+    target.value = `${yyyy}-${mm}-${dd}`;
+  }
 });
