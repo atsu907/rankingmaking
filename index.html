@@ -33,7 +33,7 @@
     </label>
   </p>
 
-  <p><strong>① テキキストファイルを読み込む：</strong></p>
+  <p><strong>① テキストファイルを読み込む：</strong></p>
   <input type="file" id="fileInput" accept=".txt">
   <br><br>
 
@@ -71,7 +71,8 @@
       let currentLogDate = null;
       const allReports = [];
 
-      const dateLineRegex = /^(\d{4})\.(\d{2})\.(\d{2})/;
+      // ★ スラッシュ & ピリオド & 1桁対応
+      const dateLineRegex = /^(\d{4})[./](\d{1,2})[./](\d{1,2})/;
       const timeRegex = /(\d+)\s*時間(?:\s*(\d+)\s*分)?/;
 
       for (let i = 0; i < lines.length; i++) {
@@ -80,7 +81,9 @@
         // 日付行
         const d = line.match(dateLineRegex);
         if (d) {
-          const y = d[1], m = d[2], day = d[3];
+          const y = d[1];
+          const m = d[2].padStart(2, "0");
+          const day = d[3].padStart(2, "0");
           currentLogDate = `${y}-${m}-${day}`;
           continue;
         }
