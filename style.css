@@ -1,1 +1,106 @@
+/* Apple風フォント */
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  background: #f2f2f7;
+  margin: 0;
+  padding: 20px;
+  display: flex;
+  justify-content: center;
+}
+
+/* 中央寄せ・最大幅 */
+.container {
+  width: 100%;
+  max-width: 600px;
+}
+
+/* タイトル */
+.title {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+/* カード（薄い影 + 薄いグレー） */
+.card {
+  background: #f8f8f8;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  margin-bottom: 24px;
+}
+
+/* ラベル */
+.label {
+  font-size: 14px;
+  font-weight: 500;
+  margin-top: 12px;
+  display: block;
+}
+
+/* 入力系 */
+.input, .textarea {
+  width: 100%;
+  padding: 10px;
+  margin-top: 6px;
+  border-radius: 8px;
+  border: 1px solid #d1d1d6;
+  font-size: 16px;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+/* ボタン（Apple風） */
+.button {
+  width: 100%;
+  margin-top: 20px;
+  padding: 14px;
+  background: #007aff;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+/* 結果カード */
+.result-card {
+  position: relative;
+}
+
+/* 結果ヘッダー */
+.result-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* 結果タイトル */
+.result-title {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+/* コピー */
+.copy-btn {
+  background: #e5e5ea;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.copy-msg {
+  color: green;
+  font-size: 14px;
+  display: none;
+}
+
+/* 結果テキスト */
+.result {
+  font-size: 16px;
+  white-space: pre-wrap;
+  margin-top: 12px;
+}
 
