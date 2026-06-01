@@ -1,3 +1,14 @@
+// Apple風のボタン → 隠れた fileInput をクリック
+document.getElementById('fileBtn').addEventListener('click', () => {
+  document.getElementById('fileInput').click();
+});
+
+// ファイル名表示
+document.getElementById('fileInput').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  document.getElementById('fileName').textContent = file ? file.name : "";
+});
+
 // ファイル読み込み
 document.getElementById('fileInput').addEventListener('change', function(e) {
   const file = e.target.files[0];
@@ -17,14 +28,12 @@ function parseAllLogs(rawText) {
   let currentLogDate = null;
   const allReports = [];
 
-  // ★ スラッシュ & ピリオド & 1桁対応
   const dateLineRegex = /^(\d{4})[./](\d{1,2})[./](\d{1,2})/;
   const timeRegex = /(\d+)\s*時間(?:\s*(\d+)\s*分)?/;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
 
-    // 日付行
     const d = line.match(dateLineRegex);
     if (d) {
       const y = d[1];
@@ -35,7 +44,6 @@ function parseAllLogs(rawText) {
     }
     if (!currentLogDate) continue;
 
-    // 勉強時間報告
     const m = line.match(/^(\d{1,2}):(\d{2})\s+(.+?)\s+勉強時間報告/);
     if (!m) continue;
 
@@ -113,10 +121,8 @@ document.getElementById('calcBtn').addEventListener('click', () => {
 
   const allReports = parseAllLogs(raw);
 
-  // 当日の日次範囲
   const { start, end } = getDailyRange(targetDateStr);
 
-  // 当日報告（最新のみ）
   const latestToday = {};
   allReports.forEach(r => {
     if (r.date >= start && r.date <= end) {
@@ -126,10 +132,8 @@ document.getElementById('calcBtn').addEventListener('click', () => {
 
   const todayEntries = Object.values(latestToday).sort((a, b) => b.minutes - a.minutes);
 
-  // 月次範囲
   const monthlyRanges = getMonthlyRanges(targetDateStr);
 
-  // 月次合計（1日1回だけ）
   const monthlyTotals = {};
 
   monthlyRanges.forEach(range => {
@@ -148,14 +152,11 @@ document.getElementById('calcBtn').addEventListener('click', () => {
     }
   });
 
-  // 日付フォーマット（6/24）
   const d = new Date(targetDateStr);
   const dateLabel = `${d.getMonth() + 1}/${d.getDate()}`;
 
-  // 表示テキスト
   let text = "";
 
-  // 総合ランキング
   text += `総合ランキング ${dateLabel}\n`;
   todayEntries.forEach((r, i) => {
     const h = Math.floor(r.minutes / 60);
@@ -168,7 +169,6 @@ document.getElementById('calcBtn').addEventListener('click', () => {
 
   text += "\n";
 
-  // 学校あり
   const school = todayEntries.filter(r => r.school);
   if (school.length > 0) {
     text += "学校ありランキング\n";
@@ -183,7 +183,6 @@ document.getElementById('calcBtn').addEventListener('click', () => {
     text += "\n";
   }
 
-  // 受験生
   const exam = todayEntries.filter(r => r.exam);
   if (exam.length > 0) {
     text += "受験生ランキング\n";
