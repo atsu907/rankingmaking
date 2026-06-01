@@ -23,7 +23,51 @@ document.getElementById('fileInput').addEventListener('change', function(e) {
 
 
 // ===============================
-//  ログ解析（完全版）
+//  全角 → 半角変換
+// ===============================
+function toHalfWidth(str) {
+  return str.replace(/[！-～]/g, function(s) {
+    return String.fromCharCode(s.charCodeAt(0) - 0xFEE0);
+  }).replace(/　/g, " ");
+}
+
+
+// ===============================
+//  時間解析（半角・全角・半対応）
+// ===============================
+function parseMinutes(text) {
+  text = toHalfWidth(text);
+
+  // 3時間半 → 3時間30分
+  const halfMatch = text.match(/(\d+)時間半/);
+  if (halfMatch) {
+    return Number(halfMatch[1]) * 60 + 30;
+  }
+
+  // 3時間20分
+  const hm = text.match(/(\d+)時間\s*(\d+)分/);
+  if (hm) {
+    return Number(hm[1]) * 60 + Number(hm[2]);
+  }
+
+  // 3時間
+  const h = text.match(/(\d+)時間/);
+  if (h) {
+    return Number(h[1]) * 60;
+  }
+
+  // 20分
+  const m = text.match(/(\d+)分/);
+  if (m) {
+    return Number(m[1]);
+  }
+
+  return 0;
+}
+
+
+// ===============================
+//  ログ解析（1行完結型 + 複数行型）
 // ===============================
 function parseAllLogs(rawText) {
   const lines = rawText.split('\n').map(l => l.trim());
@@ -32,15 +76,11 @@ function parseAllLogs(rawText) {
   let currentDate = null;
 
   const dateLineRegex = /^(\d{4})[./](\d{1,2})[./](\d{1,2})/;
-  const timeRegex = /(\d+)\s*時間(?:\s*(\d+)\s*分)?|(\d+)\s*分/;
-
-  // 「学校あり」多言語対応
   const schoolRegex = /(学校あり|学校アリ|ｶﾞｯｺｳｱﾘ|ガッコウアリ)/;
-
   const examRegex = /受験生/;
 
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
+    let line = toHalfWidth(lines[i]);
 
     // 日付行
     const d = line.match(dateLineRegex);
@@ -52,56 +92,45 @@ function parseAllLogs(rawText) {
       continue;
     }
 
-    // 勉強時間報告 → ブロック開始
+    // 勉強時間報告を含む行
     if (line.includes("勉強時間報告")) {
       if (!currentDate) continue;
 
-      // 名前は前の行（時刻付き）
-      const nameLine = lines[i - 1] || "";
+      // 時刻
+      const timeMatch = line.match(/^(\d{1,2}):(\d{2})/);
+      if (!timeMatch) continue;
+
+      const hour = Number(timeMatch[1]);
+      const minute = Number(timeMatch[2]);
 
       // 時刻削除
-      let namePart = nameLine.replace(/^\d{1,2}:\d{2}\s*/, "").trim();
+      let afterTime = line.replace(/^\d{1,2}:\d{2}\s*/, "");
 
-      // 最初のスペースまでを名前とする
-      let name = namePart.split(/\s+/)[0];
+      // 名前は「勉強時間報告」の前まで
+      const beforeReport = afterTime.split("勉強時間報告")[0].trim();
+      const name = beforeReport.split(" ")[0];
 
-      // 名前に「時間」「分」が入っていたら無効（通知文など）
-      if (/時間|分/.test(name)) continue;
+      if (!name || /時間|分/.test(name)) continue;
 
-      // ブロック（次の3行をまとめて解析）
+      // ブロック（次の3行も含める）
       const block = [
         line,
         lines[i + 1] || "",
         lines[i + 2] || "",
         lines[i + 3] || ""
-      ].join(" ");
+      ].map(toHalfWidth).join(" ");
 
       // 時間
-      let minutes = 0;
-      const t = block.match(timeRegex);
-      if (t) {
-        if (t[1]) {
-          // 3時間20分
-          const h = Number(t[1]);
-          const m = t[2] ? Number(t[2]) : 0;
-          minutes = h * 60 + m;
-        } else if (t[3]) {
-          // 3分
-          minutes = Number(t[3]);
-        }
-      }
+      const minutes = parseMinutes(block);
       if (minutes === 0) continue;
 
       // 属性
-      const school = schoolRegex.test(block); // 学校なしは無視
+      const school = schoolRegex.test(block);
       const exam = examRegex.test(block);
 
-      // 日付 + 時刻（名前行の時刻を使う）
-      const timeMatch = nameLine.match(/^(\d{1,2}):(\d{2})/);
+      // 日付 + 時刻
       let msgDate = new Date(`${currentDate}T00:00:00`);
-      if (timeMatch) {
-        msgDate.setHours(Number(timeMatch[1]), Number(timeMatch[2]), 0, 0);
-      }
+      msgDate.setHours(hour, minute, 0, 0);
 
       allReports.push({
         name,
@@ -210,7 +239,7 @@ document.getElementById('calcBtn').addEventListener('click', () => {
     const monthH = Math.floor((monthlyTotals[r.name] || 0) / 60);
 
     text += `${i + 1}位 ${r.name}：${h}時間${m}分\n`;
-    text += `今月合計 (${monthH}h)\n`;
+    text += `(${monthH}h)\n`;
   });
 
   text += "\n";
@@ -225,7 +254,7 @@ document.getElementById('calcBtn').addEventListener('click', () => {
       const monthH = Math.floor((monthlyTotals[r.name] || 0) / 60);
 
       text += `${i + 1}位 ${r.name}：${h}時間${m}分\n`;
-      text += `今月合計 (${monthH}h)\n`;
+      text += `(${monthH}h)\n`;
     });
     text += "\n";
   }
@@ -240,9 +269,11 @@ document.getElementById('calcBtn').addEventListener('click', () => {
       const monthH = Math.floor((monthlyTotals[r.name] || 0) / 60);
 
       text += `${i + 1}位 ${r.name}：${h}時間${m}分\n`;
-      text += `今月合計 (${monthH}h)\n`;
+      text += `(${monthH}h)\n`;
     });
   }
+
+  text += "\n※括弧内は今月の合計勉強時間です";
 
   document.getElementById('resultText').textContent = text;
 });
