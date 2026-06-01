@@ -13,11 +13,18 @@
     <h1 class="title">勉強時間ランキング作成</h1>
 
     <div class="card">
+
       <label class="label">対象日</label>
       <input type="date" id="targetDate" class="input">
 
       <label class="label">テキストファイルを読み込む</label>
-      <input type="file" id="fileInput" accept=".txt" class="input">
+
+      <!-- 本物の file input は隠す -->
+      <input type="file" id="fileInput" accept=".txt" class="file-hidden">
+
+      <!-- Apple風のボタン -->
+      <button id="fileBtn" class="button-secondary">ファイルを読み込む</button>
+      <span id="fileName" class="file-name"></span>
 
       <label class="label">または直接コピペ</label>
       <textarea id="logInput" rows="10" class="textarea"></textarea>
