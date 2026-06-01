@@ -3,15 +3,17 @@ body {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   background: #f2f2f7;
   margin: 0;
-  padding: 20px;
+  padding: 0;
   display: flex;
   justify-content: center;
 }
 
-/* 中央寄せ・最大幅 */
+/* 中央寄せ・最大幅 + スマホ余白 */
 .container {
   width: 100%;
   max-width: 600px;
+  padding: 20px;          /* ← スマホで左右に余白を作る */
+  box-sizing: border-box; /* ← これが超重要 */
 }
 
 /* タイトル */
@@ -29,6 +31,7 @@ body {
   border-radius: 12px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.08);
   margin-bottom: 24px;
+  box-sizing: border-box;
 }
 
 /* ラベル */
@@ -42,9 +45,9 @@ body {
 /* 入力系 */
 .input, .textarea {
   width: 100%;
-  padding: 10px;
+  padding: 12px;
   margin-top: 6px;
-  border-radius: 8px;
+  border-radius: 10px;
   border: 1px solid #d1d1d6;
   font-size: 16px;
   background: #fff;
@@ -104,3 +107,17 @@ body {
   margin-top: 12px;
 }
 
+/* スマホ最適化（iPhone向け） */
+@media (max-width: 480px) {
+  .container {
+    padding: 16px; /* スマホは余白を少し広めに */
+  }
+
+  .card {
+    padding: 18px;
+  }
+
+  .textarea {
+    min-height: 180px;
+  }
+}
