@@ -21,54 +21,86 @@ document.getElementById('fileInput').addEventListener('change', function(e) {
   reader.readAsText(file, 'UTF-8');
 });
 
-// ログ解析（全期間）
+
+// ===============================
+//  ログ解析（完全版）
+// ===============================
 function parseAllLogs(rawText) {
   const lines = rawText.split('\n').map(l => l.trim());
-
-  let currentLogDate = null;
   const allReports = [];
 
+  let currentDate = null;
+
   const dateLineRegex = /^(\d{4})[./](\d{1,2})[./](\d{1,2})/;
-  const timeRegex = /(\d+)\s*時間(?:\s*(\d+)\s*分)?/;
+  const timeRegex = /(\d+)\s*時間(?:\s*(\d+)\s*分)?|(\d+)\s*分/;
+
+  // 「学校あり」多言語対応
+  const schoolRegex = /(学校あり|学校アリ|ｶﾞｯｺｳｱﾘ|ガッコウアリ)/;
+
+  const examRegex = /受験生/;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
 
+    // 日付行
     const d = line.match(dateLineRegex);
     if (d) {
       const y = d[1];
       const m = d[2].padStart(2, "0");
       const day = d[3].padStart(2, "0");
-      currentLogDate = `${y}-${m}-${day}`;
+      currentDate = `${y}-${m}-${day}`;
       continue;
     }
-    if (!currentLogDate) continue;
 
-    const m = line.match(/^(\d{1,2}):(\d{2})\s+(.+?)\s+勉強時間報告/);
-    if (!m) continue;
+    // 勉強時間報告 → ブロック開始
+    if (line.includes("勉強時間報告")) {
+      if (!currentDate) continue;
 
-    const hour = Number(m[1]);
-    const minute = Number(m[2]);
-    const name = m[3].trim();
+      // 名前は前の行（時刻付き）
+      const nameLine = lines[i - 1] || "";
+      const name = nameLine.replace(/^\d{1,2}:\d{2}\s*/, "").trim();
 
-    let msgDate = new Date(`${currentLogDate}T00:00:00`);
-    msgDate.setHours(hour, minute, 0, 0);
+      // ブロック（次の3行をまとめて解析）
+      const block = [
+        line,
+        lines[i + 1] || "",
+        lines[i + 2] || "",
+        lines[i + 3] || ""
+      ].join(" ");
 
-    const hasSchool = line.includes("学校あり");
-    const hasExam = line.includes("受験生");
+      // 時間
+      let minutes = 0;
+      const t = block.match(timeRegex);
+      if (t) {
+        if (t[1]) {
+          // 3時間20分
+          const h = Number(t[1]);
+          const m = t[2] ? Number(t[2]) : 0;
+          minutes = h * 60 + m;
+        } else if (t[3]) {
+          // 3分
+          minutes = Number(t[3]);
+        }
+      }
+      if (minutes === 0) continue;
 
-    const timeMatch = line.match(timeRegex);
-    if (timeMatch) {
-      const h = Number(timeMatch[1]);
-      const m2 = timeMatch[2] ? Number(timeMatch[2]) : 0;
-      const total = h * 60 + m2;
+      // 属性
+      const school = schoolRegex.test(block); // 学校なしは無視
+      const exam = examRegex.test(block);
+
+      // 日付 + 時刻（名前行の時刻を使う）
+      const timeMatch = nameLine.match(/^(\d{1,2}):(\d{2})/);
+      let msgDate = new Date(`${currentDate}T00:00:00`);
+      if (timeMatch) {
+        msgDate.setHours(Number(timeMatch[1]), Number(timeMatch[2]), 0, 0);
+      }
 
       allReports.push({
         name,
-        minutes: total,
+        minutes,
         date: msgDate,
-        school: hasSchool,
-        exam: hasExam
+        school,
+        exam
       });
     }
   }
@@ -76,7 +108,10 @@ function parseAllLogs(rawText) {
   return allReports;
 }
 
-// 指定日の日次範囲
+
+// ===============================
+//  日付範囲
+// ===============================
 function getDailyRange(targetDateStr) {
   const start = new Date(`${targetDateStr}T12:00:00`);
   const end = new Date(start);
@@ -85,7 +120,6 @@ function getDailyRange(targetDateStr) {
   return { start, end };
 }
 
-// 月初〜当日までの全日次期間
 function getMonthlyRanges(targetDateStr) {
   const target = new Date(`${targetDateStr}T00:00:00`);
   const year = target.getFullYear();
@@ -105,7 +139,10 @@ function getMonthlyRanges(targetDateStr) {
   return ranges;
 }
 
-// ボタン押下
+
+// ===============================
+//  ランキング生成
+// ===============================
 document.getElementById('calcBtn').addEventListener('click', () => {
   const raw = document.getElementById('logInput').value;
   const targetDateStr = document.getElementById('targetDate').value;
@@ -157,6 +194,7 @@ document.getElementById('calcBtn').addEventListener('click', () => {
 
   let text = "";
 
+  // 総合ランキング
   text += `総合ランキング ${dateLabel}\n`;
   todayEntries.forEach((r, i) => {
     const h = Math.floor(r.minutes / 60);
@@ -164,11 +202,12 @@ document.getElementById('calcBtn').addEventListener('click', () => {
     const monthH = Math.floor((monthlyTotals[r.name] || 0) / 60);
 
     text += `${i + 1}位 ${r.name}：${h}時間${m}分\n`;
-    text += `今月合計 ${monthH}h\n`;
+    text += `今月合計 (${monthH}h)\n`;
   });
 
   text += "\n";
 
+  // 学校ありランキング
   const school = todayEntries.filter(r => r.school);
   if (school.length > 0) {
     text += "学校ありランキング\n";
@@ -178,11 +217,12 @@ document.getElementById('calcBtn').addEventListener('click', () => {
       const monthH = Math.floor((monthlyTotals[r.name] || 0) / 60);
 
       text += `${i + 1}位 ${r.name}：${h}時間${m}分\n`;
-      text += `今月合計 ${monthH}h\n`;
+      text += `今月合計 (${monthH}h)\n`;
     });
     text += "\n";
   }
 
+  // 受験生ランキング
   const exam = todayEntries.filter(r => r.exam);
   if (exam.length > 0) {
     text += "受験生ランキング\n";
@@ -192,14 +232,17 @@ document.getElementById('calcBtn').addEventListener('click', () => {
       const monthH = Math.floor((monthlyTotals[r.name] || 0) / 60);
 
       text += `${i + 1}位 ${r.name}：${h}時間${m}分\n`;
-      text += `今月合計 ${monthH}h\n`;
+      text += `今月合計 (${monthH}h)\n`;
     });
   }
 
   document.getElementById('resultText').textContent = text;
 });
 
-// コピー機能
+
+// ===============================
+//  コピー機能
+// ===============================
 document.getElementById('copyBtn').addEventListener('click', () => {
   const text = document.getElementById('resultText').textContent;
   navigator.clipboard.writeText(text).then(() => {
