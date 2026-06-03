@@ -32,7 +32,7 @@ function toHalfWidth(str) {
 
 
 // ===============================
-//  時間解析（半角・全角・半対応）
+//  時間解析
 // ===============================
 function parseMinutes(text) {
   text = toHalfWidth(text);
@@ -54,7 +54,7 @@ function parseMinutes(text) {
 
 
 // ===============================
-//  ログ解析（時刻で区切る・スペースなし対応）
+//  ログ解析（時刻で区切る）
 // ===============================
 function parseAllLogs(rawText) {
   const lines = rawText.split('\n').map(l => l.trim());
@@ -92,7 +92,7 @@ function parseAllLogs(rawText) {
       // 時刻削除
       let afterTime = line.replace(/^\d{1,2}:\d{2}\s*/, "");
 
-      // スペースなし対応：勉強時間報告の後ろにスペースを強制
+      // スペースなし対応
       afterTime = afterTime.replace(/勉強時間報告(?=[0-9０-９半])/g, "勉強時間報告 ");
 
       // 名前抽出
@@ -104,8 +104,8 @@ function parseAllLogs(rawText) {
       for (let j = i + 1; j < lines.length; j++) {
         const l = toHalfWidth(lines[j]);
 
-        if (/^\d{1,2}:\d{2}/.test(l)) break;  // 次のメッセージ
-        if (dateLineRegex.test(l)) break;     // 日付行
+        if (/^\d{1,2}:\d{2}/.test(l)) break;
+        if (dateLineRegex.test(l)) break;
 
         blockLines.push(l);
       }
@@ -230,7 +230,33 @@ document.getElementById('calcBtn').addEventListener('click', () => {
     text += `${i + 1}位 ${r.name}：${h}時間${m}分　(${monthH}h)\n`;
   });
 
-  text += "\n※括弧内は今月の合計勉強時間です";
+  // 学校ありランキング
+  const school = todayEntries.filter(r => r.school);
+  if (school.length > 0) {
+    text += `\n学校ありランキング\n`;
+    school.forEach((r, i) => {
+      const h = Math.floor(r.minutes / 60);
+      const m = r.minutes % 60;
+      const monthH = Math.floor((monthlyTotals[r.name] || 0) / 60);
+
+      text += `${i + 1}位 ${r.name}：${h}時間${m}分　(${monthH}h)\n`;
+    });
+  }
+
+  // 受験生ランキング
+  const exam = todayEntries.filter(r => r.exam);
+  if (exam.length > 0) {
+    text += `\n受験生ランキング\n`;
+    exam.forEach((r, i) => {
+      const h = Math.floor(r.minutes / 60);
+      const m = r.minutes % 60;
+      const monthH = Math.floor((monthlyTotals[r.name] || 0) / 60);
+
+      text += `${i + 1}位 ${r.name}：${h}時間${m}分　(${monthH}h)\n`;
+    });
+  }
+
+  text += `\n※括弧内は今月の合計勉強時間です`;
 
   document.getElementById('resultText').textContent = text;
 });
