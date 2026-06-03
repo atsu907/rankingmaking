@@ -1,48 +1,64 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-  <title>勉強時間ランキング作成</title>
-  <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<title>勉強時間ランキング作成</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+body {
+  font-family: "Helvetica Neue", Arial, sans-serif;
+  padding: 20px;
+  background: #f5f5f7;
+}
+textarea {
+  width: 100%;
+  height: 200px;
+  margin-top: 10px;
+}
+button {
+  padding: 10px 20px;
+  margin: 10px 0;
+  font-size: 16px;
+}
+#resultText {
+  white-space: pre-wrap;
+  background: #fff;
+  padding: 15px;
+  border-radius: 8px;
+  margin-top: 20px;
+}
+</style>
 </head>
+
 <body>
 
-  <div class="container">
+<h2>勉強時間ランキング作成</h2>
 
-    <h1 class="title">勉強時間ランキング作成</h1>
+<button id="fileBtn">ファイルを選択</button>
+<span id="fileName"></span>
+<input type="file" id="fileInput" style="display:none">
 
-    <div class="card">
+<br><br>
 
-      <label class="label">対象日</label>
-      <input type="date" id="targetDate" class="input">
+<label>ログ入力：</label>
+<textarea id="logInput"></textarea>
 
-      <label class="label">テキストファイルを読み込む</label>
+<br>
 
-      <!-- 本物の file input は隠す -->
-      <input type="file" id="fileInput" accept=".txt" class="file-hidden">
+<label>対象日：</label>
+<input type="date" id="targetDate">
 
-      <!-- Apple風のボタン -->
-      <button id="fileBtn" class="button-secondary">ファイルを読み込む</button>
-      <span id="fileName" class="file-name"></span>
+<br><br>
 
-      <label class="label">または直接コピペ</label>
-      <textarea id="logInput" rows="10" class="textarea"></textarea>
+<button id="calcBtn">ランキング作成</button>
+<button id="copyBtn">コピー</button>
+<span id="copyMsg" style="display:none;">コピーしました！</span>
 
-      <button id="calcBtn" class="button">ランキング作成</button>
-    </div>
+<pre id="resultText"></pre>
 
-    <div class="card result-card">
-      <div class="result-header">
-        <span class="result-title">結果</span>
-        <button id="copyBtn" class="copy-btn">コピー</button>
-      </div>
-      <pre id="resultText" class="result"></pre>
-      <span id="copyMsg" class="copy-msg">コピーしました！</span>
-    </div>
+<!-- キャッシュ対策として ?v=20240603 を付与 -->
+<script src="script.js?v=20240603"></script>
 
-  </div>
-
-  <script src="script.js"></script>
 </body>
 </html>
