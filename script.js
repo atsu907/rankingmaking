@@ -1,15 +1,12 @@
-// Apple風のボタン → 隠れた fileInput をクリック
 document.getElementById('fileBtn').addEventListener('click', () => {
   document.getElementById('fileInput').click();
 });
 
-// ファイル名表示
 document.getElementById('fileInput').addEventListener('change', (e) => {
   const file = e.target.files[0];
   document.getElementById('fileName').textContent = file ? file.name : "";
 });
 
-// ファイル読み込み
 document.getElementById('fileInput').addEventListener('change', function(e) {
   const file = e.target.files[0];
   if (!file) return;
@@ -21,19 +18,11 @@ document.getElementById('fileInput').addEventListener('change', function(e) {
   reader.readAsText(file, 'UTF-8');
 });
 
-
-// ===============================
-//  全角 → 半角変換
-// ===============================
 function toHalfWidth(str) {
   return str.replace(/[！-～]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0))
             .replace(/　/g, " ");
 }
 
-
-// ===============================
-//  時間解析
-// ===============================
 function parseMinutes(text) {
   text = toHalfWidth(text);
 
@@ -52,10 +41,6 @@ function parseMinutes(text) {
   return 0;
 }
 
-
-// ===============================
-//  ログ解析（時刻で区切る）
-// ===============================
 function parseAllLogs(rawText) {
   const lines = rawText.split('\n').map(l => l.trim());
   const allReports = [];
@@ -69,7 +54,6 @@ function parseAllLogs(rawText) {
   for (let i = 0; i < lines.length; i++) {
     let line = toHalfWidth(lines[i]);
 
-    // 日付行
     const d = line.match(dateLineRegex);
     if (d) {
       const y = d[1];
@@ -79,7 +63,6 @@ function parseAllLogs(rawText) {
       continue;
     }
 
-    // 勉強時間報告
     if (line.includes("勉強時間報告")) {
       if (!currentDate) continue;
 
@@ -89,17 +72,12 @@ function parseAllLogs(rawText) {
       const hour = Number(timeMatch[1]);
       const minute = Number(timeMatch[2]);
 
-      // 時刻削除
       let afterTime = line.replace(/^\d{1,2}:\d{2}\s*/, "");
-
-      // スペースなし対応
       afterTime = afterTime.replace(/勉強時間報告(?=[0-9０-９半])/g, "勉強時間報告 ");
 
-      // 名前抽出
       const beforeReport = afterTime.split("勉強時間報告")[0].trim();
       const name = beforeReport;
 
-      // ブロック生成（次の時刻行まで）
       let blockLines = [line];
       for (let j = i + 1; j < lines.length; j++) {
         const l = toHalfWidth(lines[j]);
@@ -134,10 +112,6 @@ function parseAllLogs(rawText) {
   return allReports;
 }
 
-
-// ===============================
-//  日付範囲
-// ===============================
 function getDailyRange(targetDateStr) {
   const start = new Date(`${targetDateStr}T12:00:00`);
   const end = new Date(start);
@@ -165,10 +139,6 @@ function getMonthlyRanges(targetDateStr) {
   return ranges;
 }
 
-
-// ===============================
-//  ランキング生成（1行表示）
-// ===============================
 document.getElementById('calcBtn').addEventListener('click', () => {
   const raw = document.getElementById('logInput').value;
   const targetDateStr = document.getElementById('targetDate').value;
@@ -220,7 +190,6 @@ document.getElementById('calcBtn').addEventListener('click', () => {
 
   let text = "";
 
-  // 総合ランキング
   text += `総合ランキング ${dateLabel}\n`;
   todayEntries.forEach((r, i) => {
     const h = Math.floor(r.minutes / 60);
@@ -230,7 +199,6 @@ document.getElementById('calcBtn').addEventListener('click', () => {
     text += `${i + 1}位 ${r.name}：${h}時間${m}分　(${monthH}h)\n`;
   });
 
-  // 学校ありランキング
   const school = todayEntries.filter(r => r.school);
   if (school.length > 0) {
     text += `\n学校ありランキング\n`;
@@ -243,7 +211,6 @@ document.getElementById('calcBtn').addEventListener('click', () => {
     });
   }
 
-  // 受験生ランキング
   const exam = todayEntries.filter(r => r.exam);
   if (exam.length > 0) {
     text += `\n受験生ランキング\n`;
@@ -261,10 +228,6 @@ document.getElementById('calcBtn').addEventListener('click', () => {
   document.getElementById('resultText').textContent = text;
 });
 
-
-// ===============================
-//  コピー機能
-// ===============================
 document.getElementById('copyBtn').addEventListener('click', () => {
   const text = document.getElementById('resultText').textContent;
   navigator.clipboard.writeText(text).then(() => {
@@ -274,10 +237,6 @@ document.getElementById('copyBtn').addEventListener('click', () => {
   });
 });
 
-
-// ===============================
-//  ページ読み込み時に日付を「昨日」に設定
-// ===============================
 window.addEventListener("load", () => {
   const d = new Date();
   d.setDate(d.getDate() - 1);
