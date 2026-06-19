@@ -140,13 +140,17 @@ function getMonthlyRanges(targetDateStr) {
 }
 
 document.getElementById('calcBtn').addEventListener('click', () => {
-  const raw = document.getElementById('logInput').value;
+  let raw = document.getElementById('logInput').value;
   const targetDateStr = document.getElementById('targetDate').value;
+
+  // ★ 追加：ダブルクォーテーションを全部削除
+  raw = raw.replace(/["“”]/g, "");
 
   if (!raw.trim()) {
     alert('ログを入力するか、ファイルを読み込んでください');
     return;
   }
+
   if (!targetDateStr) {
     alert('対象日を選択してください');
     return;
