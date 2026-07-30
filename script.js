@@ -143,7 +143,6 @@ document.getElementById('calcBtn').addEventListener('click', () => {
   let raw = document.getElementById('logInput').value;
   const targetDateStr = document.getElementById('targetDate').value;
 
-  // ★ 追加：ダブルクォーテーションを全部削除
   raw = raw.replace(/["“”]/g, "");
 
   if (!raw.trim()) {
@@ -173,19 +172,19 @@ document.getElementById('calcBtn').addEventListener('click', () => {
 
   const monthlyTotals = {};
 
+  // ★ 修正：月間も「最新だけ」採用
   monthlyRanges.forEach(range => {
-    const daily = {};
+    const dailyLatest = {};
 
     allReports.forEach(r => {
       if (r.date >= range.start && r.date <= range.end) {
-        daily[r.name] = (daily[r.name] || 0) + r.minutes;
+        dailyLatest[r.name] = r; // 最新だけ残る
       }
     });
 
-    for (const name in daily) {
+    for (const name in dailyLatest) {
       if (!latestToday[name]) continue;
-
-      monthlyTotals[name] = (monthlyTotals[name] || 0) + daily[name];
+      monthlyTotals[name] = (monthlyTotals[name] || 0) + dailyLatest[name].minutes;
     }
   });
 
