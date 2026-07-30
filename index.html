@@ -196,7 +196,7 @@
   <div class="app-shell">
     <header class="app-header">
       <h1>勉強時間ランキング</h1>
-      <p>最新の報告だけで日間・月間ランキングをつくるツール</p>
+      <p>LINEの会話ログを保存してランキングを作成</p>
     </header>
 
     <section class="card">
@@ -221,7 +221,7 @@
       <div class="row" style="margin-top: 14px;">
         <div style="flex: 1 1 100%;">
           <label>ログテキスト</label>
-          <textarea id="logInput" placeholder="Discordなどからコピーした勉強時間ログを貼り付けてください"></textarea>
+          <textarea id="logInput" placeholder="勉強時間ログを貼り付けてください"></textarea>
         </div>
       </div>
       <div class="row" style="margin-top: 14px;">
@@ -236,16 +236,16 @@
         <span class="icon">R</span>
         結果
       </div>
-      <div class="row">
-        <div style="flex: 1 1 100%;">
-          <div id="resultText" class="result-box"></div>
-        </div>
-      </div>
       <div class="row" style="margin-top: 12px;">
         <button id="copyBtn" class="btn btn-secondary">
           結果をコピー
         </button>
         <span id="copyMsg" class="copy-msg">コピーしました</span>
+      </div>
+      <div class="row">
+        <div style="flex: 1 1 100%;">
+          <div id="resultText" class="result-box"></div>
+        </div>
       </div>
     </section>
   </div>
