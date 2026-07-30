@@ -1,40 +1,512 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<title>勉強時間ランキング作成</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8">
+  <title>勉強時間ランキング</title>
+  <style>
+    :root {
+      --bg-main: #f5f5f7;
+      --bg-card: #ffffff;
+      --border-soft: #d2d2d7;
+      --accent: #0071e3;
+      --text-main: #1d1d1f;
+      --text-sub: #6e6e73;
+      --radius-card: 18px;
+      --radius-input: 12px;
+      --shadow-soft: 0 18px 40px rgba(0,0,0,0.08);
+    }
 
-<link rel="stylesheet" href="style.css?v=20240605">
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+      background: var(--bg-main);
+      color: var(--text-main);
+    }
+
+    .app-shell {
+      max-width: 960px;
+      margin: 40px auto;
+      padding: 0 20px;
+    }
+
+    .app-header {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    .app-header h1 {
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      font-size: 26px;
+      margin: 0 0 6px;
+    }
+
+    .app-header p {
+      margin: 0;
+      color: var(--text-sub);
+      font-size: 13px;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border-radius: var(--radius-card);
+      box-shadow: var(--shadow-soft);
+      padding: 22px 24px;
+      margin-bottom: 20px;
+      border: 1px solid rgba(0,0,0,0.03);
+    }
+
+    .card-title {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card-title span.icon {
+      width: 18px;
+      height: 18px;
+      border-radius: 6px;
+      background: var(--accent);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 11px;
+    }
+
+    .row {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .row + .row {
+      margin-top: 12px;
+    }
+
+    label {
+      font-size: 12px;
+      color: var(--text-sub);
+    }
+
+    input[type="date"],
+    textarea {
+      width: 100%;
+      border-radius: var(--radius-input);
+      border: 1px solid var(--border-soft);
+      padding: 8px 10px;
+      font-size: 13px;
+      outline: none;
+      background: #f9f9fb;
+      transition: border-color 0.15s ease, background 0.15s ease;
+    }
+
+    input[type="date"]:focus,
+    textarea:focus {
+      border-color: var(--accent);
+      background: #ffffff;
+    }
+
+    textarea {
+      min-height: 160px;
+      resize: vertical;
+      line-height: 1.5;
+    }
+
+    .btn {
+      border-radius: 999px;
+      border: none;
+      padding: 8px 18px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.08s ease;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 8px 18px rgba(0,113,227,0.35);
+    }
+
+    .btn-primary:hover {
+      background: #005bb5;
+      box-shadow: 0 10px 22px rgba(0,113,227,0.45);
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: #f5f5f7;
+      color: var(--text-main);
+      border: 1px solid var(--border-soft);
+    }
+
+    .btn-secondary:hover {
+      background: #e5e5ea;
+      transform: translateY(-1px);
+    }
+
+    .file-name {
+      font-size: 12px;
+      color: var(--text-sub);
+      margin-left: 8px;
+    }
+
+    .result-box {
+      white-space: pre-wrap;
+      font-family: "SF Mono", Menlo, Consolas, monospace;
+      font-size: 13px;
+      background: #f5f5f7;
+      border-radius: 14px;
+      padding: 12px 14px;
+      border: 1px solid var(--border-soft);
+      min-height: 120px;
+    }
+
+    .copy-msg {
+      font-size: 11px;
+      color: var(--text-sub);
+      margin-left: 8px;
+      display: none;
+    }
+
+    @media (max-width: 640px) {
+      .app-shell {
+        margin-top: 24px;
+      }
+      .card {
+        padding: 18px 16px;
+      }
+    }
+  </style>
 </head>
-
 <body>
+  <div class="app-shell">
+    <header class="app-header">
+      <h1>勉強時間ランキング</h1>
+      <p>最新の報告だけで日間・月間ランキングをつくるツール</p>
+    </header>
 
-<h2>勉強時間ランキング作成</h2>
+    <section class="card">
+      <div class="card-title">
+        <span class="icon">L</span>
+        ログ入力
+      </div>
+      <div class="row">
+        <div style="flex: 1 1 220px;">
+          <label>対象日</label>
+          <input type="date" id="targetDate">
+        </div>
+        <div style="flex: 1 1 260px;">
+          <label>ログファイル</label><br>
+          <button id="fileBtn" class="btn btn-secondary">
+            ファイルを選択
+          </button>
+          <span id="fileName" class="file-name"></span>
+          <input type="file" id="fileInput" accept=".txt" style="display:none;">
+        </div>
+      </div>
+      <div class="row" style="margin-top: 14px;">
+        <div style="flex: 1 1 100%;">
+          <label>ログテキスト</label>
+          <textarea id="logInput" placeholder="Discordなどからコピーした勉強時間ログを貼り付けてください"></textarea>
+        </div>
+      </div>
+      <div class="row" style="margin-top: 14px;">
+        <button id="calcBtn" class="btn btn-primary">
+          ランキングを計算
+        </button>
+      </div>
+    </section>
 
-<button id="fileBtn">ファイルを選択</button>
-<span id="fileName"></span>
-<input type="file" id="fileInput" accept=".txt,.log,.csv,text/plain" style="display:none">
+    <section class="card">
+      <div class="card-title">
+        <span class="icon">R</span>
+        結果
+      </div>
+      <div class="row">
+        <div style="flex: 1 1 100%;">
+          <div id="resultText" class="result-box"></div>
+        </div>
+      </div>
+      <div class="row" style="margin-top: 12px;">
+        <button id="copyBtn" class="btn btn-secondary">
+          結果をコピー
+        </button>
+        <span id="copyMsg" class="copy-msg">コピーしました</span>
+      </div>
+    </section>
+  </div>
 
-<br><br>
+  <script>
+    document.getElementById('fileBtn').addEventListener('click', () => {
+      document.getElementById('fileInput').click();
+    });
 
-<label>ログ入力：</label>
-<textarea id="logInput"></textarea>
+    document.getElementById('fileInput').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      document.getElementById('fileName').textContent = file ? file.name : "";
+    });
 
-<br>
+    document.getElementById('fileInput').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
 
-<label>対象日：</label>
-<input type="date" id="targetDate">
+      const reader = new FileReader();
+      reader.onload = function(event) {
+        document.getElementById('logInput').value = event.target.result;
+      };
+      reader.readAsText(file, 'UTF-8');
+    });
 
-<br><br>
+    function toHalfWidth(str) {
+      return str.replace(/[！-～]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0))
+                .replace(/　/g, " ");
+    }
 
-<button id="calcBtn">ランキング作成</button>
-<button id="copyBtn">コピー</button>
-<span id="copyMsg" style="display:none;">コピーしました！</span>
+    function parseMinutes(text) {
+      text = toHalfWidth(text);
 
-<pre id="resultText"></pre>
+      const halfMatch = text.match(/(\d+)時間半/);
+      if (halfMatch) return Number(halfMatch[1]) * 60 + 30;
 
-<script src="script.js?v=20240605"></script>
+      const hm = text.match(/(\d+)時間\s*(\d+)分/);
+      if (hm) return Number(hm[1]) * 60 + Number(hm[2]);
 
+      const h = text.match(/(\d+)時間/);
+      if (h) return Number(h[1]) * 60;
+
+      const m = text.match(/(\d+)分/);
+      if (m) return Number(m[1]);
+
+      return 0;
+    }
+
+    function parseAllLogs(rawText) {
+      const lines = rawText.split('\n').map(l => l.trim());
+      const allReports = [];
+
+      let currentDate = null;
+
+      const dateLineRegex = /^(\d{4})[./](\d{1,2})[./](\d{1,2})/;
+      const schoolRegex = /(学校あり|学校アリ|ｶﾞｯｺｳｱﾘ|ガッコウアリ)/;
+      const examRegex = /受験生/;
+
+      for (let i = 0; i < lines.length; i++) {
+        let line = toHalfWidth(lines[i]);
+
+        const d = line.match(dateLineRegex);
+        if (d) {
+          const y = d[1];
+          const m = d[2].padStart(2, "0");
+          const day = d[3].padStart(2, "0");
+          currentDate = `${y}-${m}-${day}`;
+          continue;
+        }
+
+        if (line.includes("勉強時間報告")) {
+          if (!currentDate) continue;
+
+          const timeMatch = line.match(/^(\d{1,2}):(\d{2})/);
+          if (!timeMatch) continue;
+
+          const hour = Number(timeMatch[1]);
+          const minute = Number(timeMatch[2]);
+
+          let afterTime = line.replace(/^\d{1,2}:\d{2}\s*/, "");
+          afterTime = afterTime.replace(/勉強時間報告(?=[0-9０-９半])/g, "勉強時間報告 ");
+
+          const beforeReport = afterTime.split("勉強時間報告")[0].trim();
+          const name = beforeReport;
+
+          let blockLines = [line];
+          for (let j = i + 1; j < lines.length; j++) {
+            const l = toHalfWidth(lines[j]);
+
+            if (/^\d{1,2}:\d{2}/.test(l)) break;
+            if (dateLineRegex.test(l)) break;
+
+            blockLines.push(l);
+          }
+
+          const block = blockLines.join(" ");
+
+          const minutes = parseMinutes(block);
+          if (minutes === 0) continue;
+
+          const school = schoolRegex.test(block);
+          const exam = examRegex.test(block);
+
+          let msgDate = new Date(`${currentDate}T00:00:00`);
+          msgDate.setHours(hour, minute, 0, 0);
+
+          allReports.push({
+            name,
+            minutes,
+            date: msgDate,
+            school,
+            exam
+          });
+        }
+      }
+
+      return allReports;
+    }
+
+    function getDailyRange(targetDateStr) {
+      const start = new Date(`${targetDateStr}T12:00:00`);
+      const end = new Date(start);
+      end.setDate(end.getDate() + 1);
+      end.setHours(6, 0, 0, 0);
+      return { start, end };
+    }
+
+    function getMonthlyRanges(targetDateStr) {
+      const target = new Date(`${targetDateStr}T00:00:00`);
+      const year = target.getFullYear();
+      const month = target.getMonth();
+
+      const ranges = [];
+
+      for (let day = 1; day <= target.getDate(); day++) {
+        const d = new Date(year, month, day);
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, "0");
+        const dd = String(d.getDate()).padStart(2, "0");
+
+        ranges.push(getDailyRange(`${yyyy}-${mm}-${dd}`));
+      }
+
+      return ranges;
+    }
+
+    document.getElementById('calcBtn').addEventListener('click', () => {
+      let raw = document.getElementById('logInput').value;
+      const targetDateStr = document.getElementById('targetDate').value;
+
+      raw = raw.replace(/["“”]/g, "");
+
+      if (!raw.trim()) {
+        alert('ログを入力するか、ファイルを読み込んでください');
+        return;
+      }
+
+      if (!targetDateStr) {
+        alert('対象日を選択してください');
+        return;
+      }
+
+      const allReports = parseAllLogs(raw);
+
+      const { start, end } = getDailyRange(targetDateStr);
+
+      const latestToday = {};
+      allReports.forEach(r => {
+        if (r.date >= start && r.date <= end) {
+          if (!latestToday[r.name] || r.date > latestToday[r.name].date) {
+            latestToday[r.name] = r;
+          }
+        }
+      });
+
+      const todayEntries = Object.values(latestToday).sort((a, b) => b.minutes - a.minutes);
+
+      const monthlyRanges = getMonthlyRanges(targetDateStr);
+
+      const monthlyTotals = {};
+
+      monthlyRanges.forEach(range => {
+        const dailyLatest = {};
+
+        allReports.forEach(r => {
+          if (r.date >= range.start && r.date <= range.end) {
+            if (!dailyLatest[r.name] || r.date > dailyLatest[r.name].date) {
+              dailyLatest[r.name] = r;
+            }
+          }
+        });
+
+        for (const name in dailyLatest) {
+          if (!latestToday[name]) continue;
+          monthlyTotals[name] = (monthlyTotals[name] || 0) + dailyLatest[name].minutes;
+        }
+      });
+
+      const d = new Date(targetDateStr);
+      const dateLabel = `${d.getMonth() + 1}/${d.getDate()}`;
+
+      let text = "";
+
+      text += `総合ランキング ${dateLabel}\n`;
+      todayEntries.forEach((r, i) => {
+        const h = Math.floor(r.minutes / 60);
+        const m = r.minutes % 60;
+        const monthH = Math.floor((monthlyTotals[r.name] || 0) / 60);
+
+        text += `${i + 1}位 ${r.name}：${h}時間${m}分　(${monthH}h)\n`;
+      });
+
+      const school = todayEntries.filter(r => r.school);
+      if (school.length > 0) {
+        text += `\n学校ありランキング\n`;
+        school.forEach((r, i) => {
+          const h = Math.floor(r.minutes / 60);
+          const m = r.minutes % 60;
+          const monthH = Math.floor((monthlyTotals[r.name] || 0) / 60);
+
+          text += `${i + 1}位 ${r.name}：${h}時間${m}分　(${monthH}h)\n`;
+        });
+      }
+
+      const exam = todayEntries.filter(r => r.exam);
+      if (exam.length > 0) {
+        text += `\n受験生ランキング\n`;
+        exam.forEach((r, i) => {
+          const h = Math.floor(r.minutes / 60);
+          const m = r.minutes % 60;
+          const monthH = Math.floor((monthlyTotals[r.name] || 0) / 60);
+
+          text += `${i + 1}位 ${r.name}：${h}時間${m}分　(${monthH}h)\n`;
+        });
+      }
+
+      text += `\n※括弧内は今月の合計勉強時間です`;
+
+      document.getElementById('resultText').textContent = text;
+    });
+
+    document.getElementById('copyBtn').addEventListener('click', () => {
+      const text = document.getElementById('resultText').textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        const msg = document.getElementById('copyMsg');
+        msg.style.display = "inline";
+        setTimeout(() => msg.style.display = "none", 1500);
+      });
+    });
+
+    window.addEventListener("load", () => {
+      const d = new Date();
+      d.setDate(d.getDate() - 1);
+
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const dd = String(d.getDate()).padStart(2, "0");
+
+      const target = document.getElementById("targetDate");
+      if (target) target.value = `${yyyy}-${mm}-${dd}`;
+    });
+  </script>
 </body>
 </html>
