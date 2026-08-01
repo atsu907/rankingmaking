@@ -508,7 +508,7 @@
           const h = Math.floor(r.minutes / 60);
           const m = r.minutes % 60;
           const monthH = Math.floor((monthlyTotals[r.name] || 0) / 60);
-          text += `${i + 1}位 ${r.name}：${h}時間${m}分　(月${monthH}h)\n`;
+          text += `${i + 1}位 ${r.name}：${h}時間${m}分　(${monthH}h)\n`;
         });
 
         const school = todayEntries.filter(r => r.school);
@@ -518,7 +518,7 @@
             const h = Math.floor(r.minutes / 60);
             const m = r.minutes % 60;
             const monthH = Math.floor((monthlyTotals[r.name] || 0) / 60);
-            text += `${i + 1}位 ${r.name}：${h}時間${m}分　(月${monthH}h)\n`;
+            text += `${i + 1}位 ${r.name}：${h}時間${m}分　(${monthH}h)\n`;
           });
         }
 
@@ -533,7 +533,7 @@
           });
         }
 
-        text += `\n※括弧内は今月の合計時間`;
+        text += `\n※括弧内は今月の合計時間です`;
         resultText.textContent = text;
       }
 
